@@ -147,6 +147,14 @@ textarea {
   justify-content: space-between;
 }
 
+.header-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .settings-header {
   border: 1px solid #d9dee7;
   border-radius: 8px;
@@ -309,12 +317,21 @@ textarea {
 }
 
 .account-card__actions {
+  flex-wrap: wrap;
   justify-content: flex-end;
 }
 
 .badge--success {
   border-color: #9ac4aa;
   color: #23613a;
+}
+
+.api-result-message {
+  border-left: 3px solid #9fb1c7;
+  color: #405066;
+  font-size: 13px;
+  margin-top: 10px;
+  padding-left: 10px;
 }
 
 .month-controls {

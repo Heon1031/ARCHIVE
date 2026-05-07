@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
+import { checkConnection } from "../services/metaApi";
 import type { Account, AccountConnectionStatus, Platform } from "../types/models";
 
 type AccountSettingsTabProps = {
@@ -82,6 +83,7 @@ function getDefaultApiSupport(platform: Platform) {
 export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettingsTabProps) {
   const [form, setForm] = useState<AccountFormState>(emptyForm);
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
+  const [apiCheckMessageByAccountId, setApiCheckMessageByAccountId] = useState<Record<string, string>>({});
 
   const activeCount = useMemo(
     () => accounts.filter((account) => account.isActive).length,
@@ -178,6 +180,14 @@ export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettin
           : account,
       ),
     );
+  }
+
+  async function handleCheckConnection(account: Account) {
+    const result = await checkConnection(account);
+    setApiCheckMessageByAccountId((currentMessages) => ({
+      ...currentMessages,
+      [account.id]: result.message,
+    }));
   }
 
   return (
@@ -362,9 +372,22 @@ export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettin
                     <div className="account-card__meta">
                       <span>토큰: {maskToken(account.accessToken)}</span>
                       <span>API: {account.isApiSupported ? "지원" : "미지원"}</span>
+                      <span>연결 상태: {connectionStatusLabels[account.connectionStatus]}</span>
+                      <span>마지막 동기화: {account.lastSyncedAt ?? "없음"}</span>
+                      <span>토큰 만료일: {account.tokenExpiresAt ?? "없음"}</span>
                     </div>
                   </div>
+                  {apiCheckMessageByAccountId[account.id] && (
+                    <p className="api-result-message">{apiCheckMessageByAccountId[account.id]}</p>
+                  )}
                   <div className="account-card__actions">
+                    <button
+                      className="primary-button"
+                      type="button"
+                      onClick={() => void handleCheckConnection(account)}
+                    >
+                      API 연결 확인
+                    </button>
                     <button className="secondary-button" type="button" onClick={() => handleEdit(account)}>
                       수정
                     </button>
