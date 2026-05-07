@@ -18,7 +18,8 @@ body {
 
 button,
 select,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -220,11 +221,17 @@ input {
 }
 
 .form-field input,
-.form-field select {
+.form-field select,
+.form-field textarea {
   border: 1px solid #cbd3df;
   border-radius: 6px;
   background: #ffffff;
   padding: 10px;
+}
+
+.form-field textarea {
+  min-height: 84px;
+  resize: vertical;
 }
 
 .checkbox-field {
@@ -310,6 +317,117 @@ input {
   color: #23613a;
 }
 
+.month-controls {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.calendar-grid {
+  display: grid;
+  gap: 1px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid #d9dee7;
+  border-radius: 8px;
+  background: #d9dee7;
+}
+
+.calendar-weekday,
+.calendar-cell {
+  background: #ffffff;
+}
+
+.calendar-weekday {
+  color: #526174;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px;
+  text-align: center;
+}
+
+.calendar-cell {
+  min-height: 118px;
+  padding: 8px;
+}
+
+.calendar-cell--blank {
+  background: #f3f5f8;
+}
+
+.calendar-day {
+  color: #405066;
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.calendar-content-card {
+  border: 1px solid #d9dee7;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #1f2933;
+  cursor: pointer;
+  display: grid;
+  gap: 2px;
+  margin-bottom: 6px;
+  padding: 7px;
+  text-align: left;
+  width: 100%;
+}
+
+.calendar-content-card span,
+.calendar-content-card small {
+  color: #627084;
+  font-size: 11px;
+}
+
+.calendar-content-card strong {
+  font-size: 12px;
+}
+
+.calendar-empty {
+  margin-top: 12px;
+}
+
+.compact-list,
+.content-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.content-row,
+.content-summary {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.content-row {
+  border: 1px solid #e1e6ee;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.content-summary {
+  flex: 1;
+}
+
+.content-summary p {
+  margin-top: 4px;
+}
+
+.empty-state {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+
 @media (max-width: 760px) {
   .section-grid {
     grid-template-columns: 1fr;
@@ -331,5 +449,20 @@ input {
 
   .account-card__meta {
     text-align: left;
+  }
+
+  .calendar-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-weekday,
+  .calendar-cell--blank {
+    display: none;
+  }
+
+  .content-row,
+  .content-summary {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

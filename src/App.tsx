@@ -6,7 +6,7 @@ import { storage } from "./lib/storage";
 import { AccountSettingsTab } from "./tabs/AccountSettingsTab";
 import { MainTab } from "./tabs/MainTab";
 import { PerformanceTab } from "./tabs/PerformanceTab";
-import type { Account, AccountFilterValue, AppTab } from "./types/models";
+import type { Account, AccountFilterValue, AppTab, ContentItem } from "./types/models";
 
 const initialFilter: AccountFilterValue = { type: "all" };
 
@@ -14,6 +14,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<AppTab>("main");
   const [accountFilter, setAccountFilter] = useState<AccountFilterValue>(initialFilter);
   const [accounts, setAccounts] = useState<Account[]>(() => storage.loadAccounts());
+  const [contents, setContents] = useState<ContentItem[]>(() => storage.loadContents());
   const filterAccounts = useMemo(
     () => accounts.filter((account) => account.isActive),
     [accounts],
@@ -23,6 +24,10 @@ function App() {
     storage.saveAccounts(accounts);
   }, [accounts]);
 
+  useEffect(() => {
+    storage.saveContents(contents);
+  }, [contents]);
+
   return (
     <AppShell
       title="콘텐츠 운영 대시보드"
@@ -31,7 +36,15 @@ function App() {
       <TabNavigation activeTab={activeTab} onChange={setActiveTab} />
       <AccountFilter accounts={filterAccounts} value={accountFilter} onChange={setAccountFilter} />
 
-      {activeTab === "main" && <MainTab />}
+      {activeTab === "main" && (
+        <MainTab
+          accounts={filterAccounts}
+          contents={contents}
+          accountFilter={accountFilter}
+          onContentsChange={setContents}
+          onOpenAccountSettings={() => setActiveTab("accountSettings")}
+        />
+      )}
       {activeTab === "performance" && <PerformanceTab />}
       {activeTab === "accountSettings" && (
         <AccountSettingsTab accounts={accounts} onAccountsChange={setAccounts} />

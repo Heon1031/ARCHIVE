@@ -18,6 +18,7 @@ export type ContentStatus =
   | "review"
   | "scheduled"
   | "published"
+  | "on_hold"
   | "archived";
 
 export type ApiSyncStatus = "idle" | "syncing" | "success" | "failed" | "expired" | "manual";
@@ -48,14 +49,14 @@ export type ContentItem = {
   format?: "post" | "reel" | "thread" | "carousel" | "story" | "article" | "other";
   topic?: string;
   status: ContentStatus;
-  scheduledAt?: string;
-  publishedAt?: string;
-  externalPostId?: string;
-  postUrl?: string;
-  planningMemo?: string;
+  plannedDate?: string;
+  publishedDate?: string;
+  externalMediaId?: string;
+  externalPermalink?: string;
+  draftMemo?: string;
   visualMemo?: string;
   reminderMemo?: string;
-  retrospectiveMemo?: string;
+  retrospective?: string;
   source: DataSource;
   createdAt: string;
   updatedAt: string;
