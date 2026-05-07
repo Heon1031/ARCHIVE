@@ -2,10 +2,25 @@ import type { Account, InsightRecord, Platform } from "../types/models";
 
 const notImplementedMessage = "실제 API 연결은 8단계에서 구현됩니다.";
 
+export type ApiErrorStatus =
+  | "not_implemented"
+  | "missing_token"
+  | "unsupported_platform"
+  | "expired_token"
+  | "permission_denied"
+  | "invalid_account"
+  | "invalid_media"
+  | "network_error"
+  | "rate_limited"
+  | "unknown_error";
+
 export type ApiErrorResult = {
   ok: false;
-  status: "not_implemented" | "missing_token" | "unsupported_platform";
+  status: ApiErrorStatus;
   message: string;
+  checkedAt?: string;
+  platform?: Platform;
+  externalAccountId?: string;
 };
 
 export type ApiConnectionResult =
@@ -15,7 +30,13 @@ export type ApiConnectionResult =
       status: "connected";
       message: string;
       checkedAt: string;
+      platform: Platform;
+      externalAccountId?: string;
     };
+
+export type ApiListResult<T> = T[] | ApiErrorResult;
+
+export type ApiItemResult<T> = T | ApiErrorResult;
 
 export type ExternalMediaItem = {
   id: string;
@@ -58,14 +79,14 @@ export async function checkConnection(_account: Account): Promise<ApiConnectionR
   return getStubResult();
 }
 
-export async function fetchRecentMedia(_account: Account): Promise<ExternalMediaItem[] | ApiErrorResult> {
+export async function fetchRecentMedia(_account: Account): Promise<ApiListResult<ExternalMediaItem>> {
   return getStubResult();
 }
 
 export async function fetchMediaInsights(
   _account: Account,
   _mediaId: string,
-): Promise<NormalizedInsight | ApiErrorResult> {
+): Promise<ApiItemResult<NormalizedInsight>> {
   return getStubResult();
 }
 
