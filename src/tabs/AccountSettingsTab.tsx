@@ -6,11 +6,14 @@ import {
   type ExternalMediaItem,
   type NormalizedInsight,
 } from "../services/metaApi";
-import type { Account, AccountConnectionStatus, Platform } from "../types/models";
+import type { Account, AccountConnectionStatus, ContentItem, InsightRecord, Platform } from "../types/models";
 
 type AccountSettingsTabProps = {
   accounts: Account[];
+  contents: ContentItem[];
+  insights: InsightRecord[];
   onAccountsChange: (accounts: Account[]) => void;
+  onInsightsChange: (insights: InsightRecord[]) => void;
 };
 
 type AccountFormState = {
@@ -25,6 +28,30 @@ type AccountFormState = {
   connectionStatus: AccountConnectionStatus;
   isApiSupported: boolean;
   isActive: boolean;
+};
+
+type ManualMetricForm = {
+  reach: string;
+  views: string;
+  likes: string;
+  comments: string;
+  saves: string;
+  shares: string;
+  replies: string;
+  reposts: string;
+  quotes: string;
+};
+
+const emptyManualMetricForm: ManualMetricForm = {
+  reach: "",
+  views: "",
+  likes: "",
+  comments: "",
+  saves: "",
+  shares: "",
+  replies: "",
+  reposts: "",
+  quotes: "",
 };
 
 const emptyForm: AccountFormState = {
@@ -100,14 +127,131 @@ function formatInsightValue(value?: number) {
   return typeof value === "number" ? value.toLocaleString() : "-";
 }
 
-export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettingsTabProps) {
+function getContentOptionLabel(content: ContentItem) {
+  return `${content.title} · ${content.plannedDate ?? content.publishedDate ?? "날짜 없음"}`;
+}
+
+function findMatchedContent(contents: ContentItem[], accountId: string, mediaId: string) {
+  return contents.find(
+    (content) => content.accountId === accountId && content.externalMediaId === mediaId,
+  );
+}
+
+function toInsightRecord(
+  insight: NormalizedInsight,
+  existingInsight: InsightRecord | undefined,
+  contentId: string,
+  account: Account,
+) {
+  const now = new Date().toISOString();
+  const baseRecord = {
+    contentId,
+    accountId: account.id,
+    platform: account.platform,
+    source: "api" as const,
+    measuredAt: insight.measuredAt || now,
+    reach: insight.reach,
+    views: insight.views,
+    likes: insight.likes,
+    comments: insight.comments,
+    saves: insight.saves,
+    shares: insight.shares,
+    replies: insight.replies,
+    reposts: insight.reposts,
+    quotes: insight.quotes,
+    apiSyncStatus: "success" as const,
+    lastSyncedAt: now,
+    syncErrorMessage: undefined,
+    updatedAt: now,
+  };
+
+  if (existingInsight) {
+    return {
+      ...existingInsight,
+      ...baseRecord,
+    };
+  }
+
+  return {
+    id: createId(),
+    ...baseRecord,
+    createdAt: now,
+  };
+}
+
+function parseManualMetric(value: string) {
+  if (!value.trim()) {
+    return undefined;
+  }
+
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : undefined;
+}
+
+function toManualInsightRecord(
+  form: ManualMetricForm,
+  existingInsight: InsightRecord | undefined,
+  contentId: string,
+  account: Account,
+) {
+  const now = new Date().toISOString();
+  const baseRecord = {
+    contentId,
+    accountId: account.id,
+    platform: account.platform,
+    source: "manual" as const,
+    measuredAt: now,
+    reach: parseManualMetric(form.reach),
+    views: parseManualMetric(form.views),
+    likes: parseManualMetric(form.likes),
+    comments: parseManualMetric(form.comments),
+    saves: parseManualMetric(form.saves),
+    shares: parseManualMetric(form.shares),
+    replies: parseManualMetric(form.replies),
+    reposts: parseManualMetric(form.reposts),
+    quotes: parseManualMetric(form.quotes),
+    apiSyncStatus: "manual" as const,
+    syncErrorMessage: undefined,
+    updatedAt: now,
+  };
+
+  if (existingInsight) {
+    return {
+      ...existingInsight,
+      ...baseRecord,
+      lastSyncedAt: undefined,
+    };
+  }
+
+  return {
+    id: createId(),
+    ...baseRecord,
+    lastSyncedAt: undefined,
+    createdAt: now,
+  };
+}
+
+export function AccountSettingsTab({
+  accounts,
+  contents,
+  insights,
+  onAccountsChange,
+  onInsightsChange,
+}: AccountSettingsTabProps) {
   const [form, setForm] = useState<AccountFormState>(emptyForm);
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [apiCheckMessageByAccountId, setApiCheckMessageByAccountId] = useState<Record<string, string>>({});
   const [recentMediaByAccountId, setRecentMediaByAccountId] = useState<Record<string, ExternalMediaItem[]>>({});
   const [recentMediaMessageByAccountId, setRecentMediaMessageByAccountId] = useState<Record<string, string>>({});
+  const [recentMediaFailureByAccountId, setRecentMediaFailureByAccountId] = useState<Record<string, boolean>>({});
   const [insightsByMediaId, setInsightsByMediaId] = useState<Record<string, NormalizedInsight>>({});
   const [insightMessageByMediaId, setInsightMessageByMediaId] = useState<Record<string, string>>({});
+  const [selectedContentByMediaId, setSelectedContentByMediaId] = useState<Record<string, string>>({});
+  const [saveInsightMessageByMediaId, setSaveInsightMessageByMediaId] = useState<Record<string, string>>({});
+  const [insightFailureByMediaId, setInsightFailureByMediaId] = useState<Record<string, boolean>>({});
+  const [manualMetricsByTargetId, setManualMetricsByTargetId] = useState<Record<string, ManualMetricForm>>({});
+  const [manualContentByTargetId, setManualContentByTargetId] = useState<Record<string, string>>({});
+  const [manualMessageByTargetId, setManualMessageByTargetId] = useState<Record<string, string>>({});
 
   const activeCount = useMemo(
     () => accounts.filter((account) => account.isActive).length,
@@ -243,6 +387,10 @@ export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettin
         ...currentMedia,
         [account.id]: result,
       }));
+      setRecentMediaFailureByAccountId((currentFailures) => ({
+        ...currentFailures,
+        [account.id]: false,
+      }));
       setRecentMediaMessageByAccountId((currentMessages) => ({
         ...currentMessages,
         [account.id]: result.length > 0 ? "최근 게시물을 불러왔습니다." : "최근 게시물이 없습니다.",
@@ -253,6 +401,10 @@ export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettin
     setRecentMediaByAccountId((currentMedia) => ({
       ...currentMedia,
       [account.id]: [],
+    }));
+    setRecentMediaFailureByAccountId((currentFailures) => ({
+      ...currentFailures,
+      [account.id]: true,
     }));
     setRecentMediaMessageByAccountId((currentMessages) => ({
       ...currentMessages,
@@ -268,6 +420,10 @@ export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettin
         ...currentMessages,
         [mediaId]: result.message,
       }));
+      setInsightFailureByMediaId((currentFailures) => ({
+        ...currentFailures,
+        [mediaId]: true,
+      }));
       return;
     }
 
@@ -275,10 +431,155 @@ export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettin
       ...currentInsights,
       [mediaId]: result,
     }));
+    setInsightFailureByMediaId((currentFailures) => ({
+      ...currentFailures,
+      [mediaId]: false,
+    }));
     setInsightMessageByMediaId((currentMessages) => ({
       ...currentMessages,
       [mediaId]: "인사이트를 불러왔습니다.",
     }));
+  }
+
+  function handleSaveInsight(account: Account, media: ExternalMediaItem) {
+    const insight = insightsByMediaId[media.externalMediaId];
+    const matchedContent = findMatchedContent(contents, account.id, media.externalMediaId);
+    const selectedContentId =
+      selectedContentByMediaId[media.externalMediaId] ?? matchedContent?.id ?? "";
+
+    if (!insight || !selectedContentId) {
+      setSaveInsightMessageByMediaId((currentMessages) => ({
+        ...currentMessages,
+        [media.externalMediaId]: "연결할 콘텐츠를 선택해야 저장할 수 있습니다.",
+      }));
+      return;
+    }
+
+    const existingInsight = insights.find(
+      (currentInsight) =>
+        currentInsight.contentId === selectedContentId &&
+        currentInsight.accountId === account.id &&
+        currentInsight.platform === account.platform &&
+        currentInsight.source === "api",
+    );
+    const nextInsight = toInsightRecord(insight, existingInsight, selectedContentId, account);
+    const nextInsights = existingInsight
+      ? insights.map((currentInsight) =>
+          currentInsight.id === existingInsight.id ? nextInsight : currentInsight,
+        )
+      : [...insights, nextInsight];
+
+    onInsightsChange(nextInsights);
+    setSaveInsightMessageByMediaId((currentMessages) => ({
+      ...currentMessages,
+      [media.externalMediaId]: "성과 탭에 저장했습니다.",
+    }));
+  }
+
+  function updateManualMetric(targetId: string, key: keyof ManualMetricForm, value: string) {
+    setManualMetricsByTargetId((currentForms) => ({
+      ...currentForms,
+      [targetId]: {
+        ...(currentForms[targetId] ?? emptyManualMetricForm),
+        [key]: value,
+      },
+    }));
+  }
+
+  function handleSaveManualInsight(account: Account, targetId: string, defaultContentId = "") {
+    const selectedContentId = manualContentByTargetId[targetId] ?? defaultContentId;
+    const form = manualMetricsByTargetId[targetId] ?? emptyManualMetricForm;
+
+    if (!selectedContentId) {
+      setManualMessageByTargetId((currentMessages) => ({
+        ...currentMessages,
+        [targetId]: "연결할 콘텐츠를 선택해야 수기 성과를 저장할 수 있습니다.",
+      }));
+      return;
+    }
+
+    const existingInsight = insights.find(
+      (currentInsight) =>
+        currentInsight.contentId === selectedContentId &&
+        currentInsight.accountId === account.id &&
+        currentInsight.platform === account.platform &&
+        currentInsight.source === "manual",
+    );
+    const nextInsight = toManualInsightRecord(form, existingInsight, selectedContentId, account);
+    const nextInsights = existingInsight
+      ? insights.map((currentInsight) =>
+          currentInsight.id === existingInsight.id ? nextInsight : currentInsight,
+        )
+      : [...insights, nextInsight];
+
+    onInsightsChange(nextInsights);
+    setManualMessageByTargetId((currentMessages) => ({
+      ...currentMessages,
+      [targetId]: "수기 성과를 저장했습니다.",
+    }));
+  }
+
+  function renderManualInsightForm(account: Account, targetId: string, defaultContentId = "") {
+    const accountContents = contents.filter((content) => content.accountId === account.id);
+    const form = manualMetricsByTargetId[targetId] ?? emptyManualMetricForm;
+    const selectedContentId = manualContentByTargetId[targetId] ?? defaultContentId;
+    const metricFields: Array<{ key: keyof ManualMetricForm; label: string }> = [
+      { key: "reach", label: "도달" },
+      { key: "views", label: "조회수" },
+      { key: "likes", label: "좋아요" },
+      { key: "comments", label: "댓글" },
+      { key: "saves", label: "저장" },
+      { key: "shares", label: "공유" },
+      { key: "replies", label: "답글" },
+      { key: "reposts", label: "리포스트" },
+      { key: "quotes", label: "인용" },
+    ];
+
+    return (
+      <div className="placeholder-form">
+        <p>API 실패 또는 미지원 플랫폼일 때만 사용하는 보조 입력입니다.</p>
+        <label className="form-field">
+          <span>수기 성과를 연결할 콘텐츠</span>
+          <select
+            value={selectedContentId}
+            onChange={(event) =>
+              setManualContentByTargetId((currentSelections) => ({
+                ...currentSelections,
+                [targetId]: event.target.value,
+              }))
+            }
+          >
+            <option value="">콘텐츠 선택</option>
+            {accountContents.map((content) => (
+              <option key={content.id} value={content.id}>
+                {getContentOptionLabel(content)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="form-grid">
+          {metricFields.map((field) => (
+            <label className="form-field" key={field.key}>
+              <span>{field.label}</span>
+              <input
+                min="0"
+                type="number"
+                value={form[field.key]}
+                onChange={(event) => updateManualMetric(targetId, field.key, event.target.value)}
+              />
+            </label>
+          ))}
+        </div>
+        {manualMessageByTargetId[targetId] && <p>{manualMessageByTargetId[targetId]}</p>}
+        <button
+          className="secondary-button"
+          type="button"
+          onClick={() => handleSaveManualInsight(account, targetId, defaultContentId)}
+        >
+          수기 성과 저장
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -474,9 +775,18 @@ export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettin
                   {recentMediaMessageByAccountId[account.id] && (
                     <p className="api-result-message">{recentMediaMessageByAccountId[account.id]}</p>
                   )}
+                  {((account.platform !== "instagram" && account.platform !== "threads") ||
+                    recentMediaFailureByAccountId[account.id]) &&
+                    renderManualInsightForm(account, `account:${account.id}`)}
                   {recentMediaByAccountId[account.id]?.length > 0 && (
                     <div className="compact-list">
-                      {recentMediaByAccountId[account.id].map((media) => (
+                      {recentMediaByAccountId[account.id].map((media) => {
+                        const accountContents = contents.filter((content) => content.accountId === account.id);
+                        const matchedContent = findMatchedContent(contents, account.id, media.externalMediaId);
+                        const selectedContentId =
+                          selectedContentByMediaId[media.externalMediaId] ?? matchedContent?.id ?? "";
+
+                        return (
                         <div className="content-row" key={media.id}>
                           <div className="content-summary">
                             <div>
@@ -488,6 +798,12 @@ export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettin
                               {insightMessageByMediaId[media.externalMediaId] && (
                                 <p>{insightMessageByMediaId[media.externalMediaId]}</p>
                               )}
+                              {insightFailureByMediaId[media.externalMediaId] &&
+                                renderManualInsightForm(
+                                  account,
+                                  `media:${media.externalMediaId}`,
+                                  selectedContentId,
+                                )}
                               {insightsByMediaId[media.externalMediaId] && (
                                 <div className="performance-metrics">
                                   <span>도달 {formatInsightValue(insightsByMediaId[media.externalMediaId].reach)}</span>
@@ -506,6 +822,33 @@ export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettin
                                   <span>인용 {formatInsightValue(insightsByMediaId[media.externalMediaId].quotes)}</span>
                                 </div>
                               )}
+                              {insightsByMediaId[media.externalMediaId] && (
+                                <div className="placeholder-form">
+                                  <label className="form-field">
+                                    <span>성과를 연결할 콘텐츠</span>
+                                    <select
+                                      value={selectedContentId}
+                                      onChange={(event) =>
+                                        setSelectedContentByMediaId((currentSelections) => ({
+                                          ...currentSelections,
+                                          [media.externalMediaId]: event.target.value,
+                                        }))
+                                      }
+                                    >
+                                      <option value="">콘텐츠 선택</option>
+                                      {accountContents.map((content) => (
+                                        <option key={content.id} value={content.id}>
+                                          {matchedContent?.id === content.id ? "매칭됨 · " : ""}
+                                          {getContentOptionLabel(content)}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                  {saveInsightMessageByMediaId[media.externalMediaId] && (
+                                    <p>{saveInsightMessageByMediaId[media.externalMediaId]}</p>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                           <button
@@ -520,8 +863,18 @@ export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettin
                               링크 열기
                             </a>
                           )}
+                          {insightsByMediaId[media.externalMediaId] && (
+                            <button
+                              className="secondary-button"
+                              type="button"
+                              onClick={() => handleSaveInsight(account, media)}
+                            >
+                              성과로 저장
+                            </button>
+                          )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                   <div className="account-card__actions">

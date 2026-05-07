@@ -140,6 +140,23 @@ function getErrorMessage(status: ApiErrorStatus) {
   return messages[status];
 }
 
+function getActionableErrorMessage(status: ApiErrorStatus) {
+  const messages: Record<ApiErrorStatus, string> = {
+    not_implemented: notImplementedMessage,
+    missing_token: "계정 설정 탭에서 Access Token을 입력하세요.",
+    unsupported_platform: "이 플랫폼은 API를 지원하지 않습니다. 필요한 경우 수기 입력으로 성과를 기록하세요.",
+    expired_token: "Access Token이 만료되었습니다. 토큰을 다시 발급받아 교체하세요.",
+    permission_denied: "API 권한이 부족합니다. Meta 앱 권한과 계정 연결 상태를 확인하세요.",
+    invalid_account: "계정 ID를 확인할 수 없습니다. 계정 설정의 외부 계정 ID를 확인하세요.",
+    invalid_media: "게시물 ID를 확인할 수 없습니다. 최근 게시물 목록을 다시 불러오세요.",
+    network_error: "네트워크 오류가 발생했습니다. 연결 상태를 확인한 뒤 다시 시도하세요.",
+    rate_limited: "API 호출 제한에 도달했습니다. 잠시 후 다시 시도하세요.",
+    unknown_error: "API 요청 중 알 수 없는 오류가 발생했습니다. 입력값과 Meta API 상태를 확인하세요.",
+  };
+
+  return messages[status];
+}
+
 function createErrorResult(
   status: ApiErrorStatus,
   account: Account,
@@ -148,7 +165,7 @@ function createErrorResult(
   return {
     ok: false,
     status,
-    message: getErrorMessage(status),
+    message: getActionableErrorMessage(status),
     checkedAt,
     platform: account.platform,
     externalAccountId: account.externalAccountId,

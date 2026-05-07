@@ -15,7 +15,7 @@ function App() {
   const [accountFilter, setAccountFilter] = useState<AccountFilterValue>(initialFilter);
   const [accounts, setAccounts] = useState<Account[]>(() => storage.loadAccounts());
   const [contents, setContents] = useState<ContentItem[]>(() => storage.loadContents());
-  const [insights] = useState<InsightRecord[]>(() => storage.loadInsights());
+  const [insights, setInsights] = useState<InsightRecord[]>(() => storage.loadInsights());
   const filterAccounts = useMemo(
     () => accounts.filter((account) => account.isActive),
     [accounts],
@@ -28,6 +28,10 @@ function App() {
   useEffect(() => {
     storage.saveContents(contents);
   }, [contents]);
+
+  useEffect(() => {
+    storage.saveInsights(insights);
+  }, [insights]);
 
   return (
     <AppShell
@@ -55,7 +59,13 @@ function App() {
         />
       )}
       {activeTab === "accountSettings" && (
-        <AccountSettingsTab accounts={accounts} onAccountsChange={setAccounts} />
+        <AccountSettingsTab
+          accounts={accounts}
+          contents={contents}
+          insights={insights}
+          onAccountsChange={setAccounts}
+          onInsightsChange={setInsights}
+        />
       )}
     </AppShell>
   );
