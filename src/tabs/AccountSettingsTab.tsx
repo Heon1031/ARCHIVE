@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { checkConnection } from "../services/metaApi";
+import { checkConnection, fetchRecentMedia, type ExternalMediaItem } from "../services/metaApi";
 import type { Account, AccountConnectionStatus, Platform } from "../types/models";
 
 type AccountSettingsTabProps = {
@@ -80,10 +80,22 @@ function getDefaultApiSupport(platform: Platform) {
   return platform === "instagram" || platform === "threads";
 }
 
+function getMediaPreview(media: ExternalMediaItem) {
+  const previewText = media.caption ?? media.text;
+
+  if (!previewText) {
+    return "본문 없음";
+  }
+
+  return previewText.length > 80 ? `${previewText.slice(0, 80)}...` : previewText;
+}
+
 export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettingsTabProps) {
   const [form, setForm] = useState<AccountFormState>(emptyForm);
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [apiCheckMessageByAccountId, setApiCheckMessageByAccountId] = useState<Record<string, string>>({});
+  const [recentMediaByAccountId, setRecentMediaByAccountId] = useState<Record<string, ExternalMediaItem[]>>({});
+  const [recentMediaMessageByAccountId, setRecentMediaMessageByAccountId] = useState<Record<string, string>>({});
 
   const activeCount = useMemo(
     () => accounts.filter((account) => account.isActive).length,
@@ -206,6 +218,31 @@ export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettin
       ),
     );
     setApiCheckMessageByAccountId((currentMessages) => ({
+      ...currentMessages,
+      [account.id]: result.message,
+    }));
+  }
+
+  async function handleFetchRecentMedia(account: Account) {
+    const result = await fetchRecentMedia(account);
+
+    if (Array.isArray(result)) {
+      setRecentMediaByAccountId((currentMedia) => ({
+        ...currentMedia,
+        [account.id]: result,
+      }));
+      setRecentMediaMessageByAccountId((currentMessages) => ({
+        ...currentMessages,
+        [account.id]: result.length > 0 ? "최근 게시물을 불러왔습니다." : "최근 게시물이 없습니다.",
+      }));
+      return;
+    }
+
+    setRecentMediaByAccountId((currentMedia) => ({
+      ...currentMedia,
+      [account.id]: [],
+    }));
+    setRecentMediaMessageByAccountId((currentMessages) => ({
       ...currentMessages,
       [account.id]: result.message,
     }));
@@ -401,6 +438,31 @@ export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettin
                   {apiCheckMessageByAccountId[account.id] && (
                     <p className="api-result-message">{apiCheckMessageByAccountId[account.id]}</p>
                   )}
+                  {recentMediaMessageByAccountId[account.id] && (
+                    <p className="api-result-message">{recentMediaMessageByAccountId[account.id]}</p>
+                  )}
+                  {recentMediaByAccountId[account.id]?.length > 0 && (
+                    <div className="compact-list">
+                      {recentMediaByAccountId[account.id].map((media) => (
+                        <div className="content-row" key={media.id}>
+                          <div className="content-summary">
+                            <div>
+                              <strong>{media.externalMediaId}</strong>
+                              <p>
+                                {media.publishedAt ?? "게시일 없음"} · {media.mediaType ?? "유형 없음"}
+                              </p>
+                              <p>{getMediaPreview(media)}</p>
+                            </div>
+                          </div>
+                          {media.permalink && (
+                            <a className="secondary-button" href={media.permalink} target="_blank" rel="noreferrer">
+                              링크 열기
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="account-card__actions">
                     <button
                       className="primary-button"
@@ -408,6 +470,13 @@ export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettin
                       onClick={() => void handleCheckConnection(account)}
                     >
                       API 연결 확인
+                    </button>
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() => void handleFetchRecentMedia(account)}
+                    >
+                      최근 게시물 확인
                     </button>
                     <button className="secondary-button" type="button" onClick={() => handleEdit(account)}>
                       수정

@@ -3,6 +3,8 @@ import type { Account, InsightRecord, Platform } from "../types/models";
 const notImplementedMessage = "실제 API 연결은 8단계에서 구현됩니다.";
 const instagramConnectionFields = "id,username,account_type,media_count";
 const threadsConnectionFields = "id,username,name";
+const instagramMediaFields = "id,caption,media_type,permalink,timestamp";
+const threadsMediaFields = "id,text,permalink,timestamp,media_type";
 
 export type ApiErrorStatus =
   | "not_implemented"
@@ -44,6 +46,10 @@ export type ExternalMediaItem = {
   id: string;
   accountId: string;
   platform: Platform;
+  externalMediaId: string;
+  caption?: string;
+  text?: string;
+  mediaType?: string;
   permalink?: string;
   publishedAt?: string;
 };
@@ -78,6 +84,19 @@ type MetaApiErrorPayload = {
   };
 };
 
+type RawExternalMediaItem = {
+  id?: string;
+  caption?: string;
+  text?: string;
+  media_type?: string;
+  permalink?: string;
+  timestamp?: string;
+};
+
+type MetaMediaListPayload = MetaApiErrorPayload & {
+  data?: RawExternalMediaItem[];
+};
+
 function getStubResult(): ApiErrorResult {
   return {
     ok: false,
@@ -95,9 +114,9 @@ function getErrorMessage(status: ApiErrorStatus) {
     permission_denied: "API 권한이 부족합니다. 공식 문서에서 필요한 권한을 확인해야 합니다.",
     invalid_account: "계정 ID를 확인할 수 없습니다.",
     invalid_media: "미디어 ID를 확인할 수 없습니다.",
-    network_error: "네트워크 오류로 API 연결을 확인하지 못했습니다.",
+    network_error: "네트워크 오류로 API 요청을 완료하지 못했습니다.",
     rate_limited: "API 호출 제한에 도달했습니다. 잠시 후 다시 시도해야 합니다.",
-    unknown_error: "API 연결 확인 중 알 수 없는 오류가 발생했습니다.",
+    unknown_error: "API 요청 중 알 수 없는 오류가 발생했습니다.",
   };
 
   return messages[status];
@@ -118,6 +137,22 @@ function createErrorResult(
   };
 }
 
+function validateAccountForApi(account: Account, checkedAt: string): ApiErrorResult | null {
+  if (account.platform !== "instagram" && account.platform !== "threads") {
+    return createErrorResult("unsupported_platform", account, checkedAt);
+  }
+
+  if (!account.accessToken) {
+    return createErrorResult("missing_token", account, checkedAt);
+  }
+
+  if (!account.externalAccountId) {
+    return createErrorResult("invalid_account", account, checkedAt);
+  }
+
+  return null;
+}
+
 function createConnectionUrl(account: Account) {
   const fields =
     account.platform === "instagram" ? instagramConnectionFields : threadsConnectionFields;
@@ -128,6 +163,22 @@ function createConnectionUrl(account: Account) {
   const url = new URL(baseUrl);
 
   url.searchParams.set("fields", fields);
+  url.searchParams.set("access_token", account.accessToken ?? "");
+
+  return url;
+}
+
+function createRecentMediaUrl(account: Account) {
+  const fields = account.platform === "instagram" ? instagramMediaFields : threadsMediaFields;
+  const baseUrl =
+    account.platform === "instagram"
+      ? `https://graph.instagram.com/${account.externalAccountId}/media`
+      : `https://graph.threads.net/v1.0/${account.externalAccountId}/threads`;
+  const url = new URL(baseUrl);
+
+  // Meta API endpoint와 fields는 실제 구현/운영 전 최신 공식 문서 확인이 필요합니다.
+  url.searchParams.set("fields", fields);
+  url.searchParams.set("limit", "10");
   url.searchParams.set("access_token", account.accessToken ?? "");
 
   return url;
@@ -157,19 +208,33 @@ function mapMetaError(response: Response, payload: MetaApiErrorPayload): ApiErro
   return "unknown_error";
 }
 
+function normalizeExternalMediaItem(
+  rawItem: RawExternalMediaItem,
+  account: Account,
+): ExternalMediaItem | null {
+  if (!rawItem.id) {
+    return null;
+  }
+
+  return {
+    id: rawItem.id,
+    accountId: account.id,
+    platform: account.platform,
+    externalMediaId: rawItem.id,
+    caption: rawItem.caption,
+    text: rawItem.text,
+    mediaType: rawItem.media_type,
+    permalink: rawItem.permalink,
+    publishedAt: rawItem.timestamp,
+  };
+}
+
 export async function checkConnection(account: Account): Promise<ApiConnectionResult> {
   const checkedAt = new Date().toISOString();
+  const validationError = validateAccountForApi(account, checkedAt);
 
-  if (account.platform !== "instagram" && account.platform !== "threads") {
-    return createErrorResult("unsupported_platform", account, checkedAt);
-  }
-
-  if (!account.accessToken) {
-    return createErrorResult("missing_token", account, checkedAt);
-  }
-
-  if (!account.externalAccountId) {
-    return createErrorResult("invalid_account", account, checkedAt);
+  if (validationError) {
+    return validationError;
   }
 
   try {
@@ -193,8 +258,28 @@ export async function checkConnection(account: Account): Promise<ApiConnectionRe
   }
 }
 
-export async function fetchRecentMedia(_account: Account): Promise<ApiListResult<ExternalMediaItem>> {
-  return getStubResult();
+export async function fetchRecentMedia(account: Account): Promise<ApiListResult<ExternalMediaItem>> {
+  const checkedAt = new Date().toISOString();
+  const validationError = validateAccountForApi(account, checkedAt);
+
+  if (validationError) {
+    return validationError;
+  }
+
+  try {
+    const response = await fetch(createRecentMediaUrl(account));
+    const payload = (await response.json().catch(() => ({}))) as MetaMediaListPayload;
+
+    if (!response.ok) {
+      return createErrorResult(mapMetaError(response, payload), account, checkedAt);
+    }
+
+    return (payload.data ?? [])
+      .map((rawItem) => normalizeExternalMediaItem(rawItem, account))
+      .filter((item): item is ExternalMediaItem => item !== null);
+  } catch {
+    return createErrorResult("network_error", account, checkedAt);
+  }
 }
 
 export async function fetchMediaInsights(
