@@ -184,6 +184,27 @@ export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettin
 
   async function handleCheckConnection(account: Account) {
     const result = await checkConnection(account);
+    const checkedAt = result.checkedAt ?? new Date().toISOString();
+    const nextConnectionStatus = result.ok
+      ? "connected"
+      : result.status === "unsupported_platform"
+        ? "unsupported"
+        : result.status === "expired_token"
+          ? "expired"
+          : "failed";
+
+    onAccountsChange(
+      accounts.map((currentAccount) =>
+        currentAccount.id === account.id
+          ? {
+              ...currentAccount,
+              connectionStatus: nextConnectionStatus,
+              lastSyncedAt: checkedAt,
+              updatedAt: checkedAt,
+            }
+          : currentAccount,
+      ),
+    );
     setApiCheckMessageByAccountId((currentMessages) => ({
       ...currentMessages,
       [account.id]: result.message,
