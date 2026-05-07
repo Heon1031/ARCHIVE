@@ -25,6 +25,7 @@ export type ApiSyncStatus = "idle" | "syncing" | "success" | "failed" | "expired
 export type Account = {
   id: string;
   platform: Platform;
+  accountName: string;
   displayName: string;
   username?: string;
   externalAccountId?: string;
