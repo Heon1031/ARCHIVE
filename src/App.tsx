@@ -6,7 +6,7 @@ import { storage } from "./lib/storage";
 import { AccountSettingsTab } from "./tabs/AccountSettingsTab";
 import { MainTab } from "./tabs/MainTab";
 import { PerformanceTab } from "./tabs/PerformanceTab";
-import type { Account, AccountFilterValue, AppTab, ContentItem } from "./types/models";
+import type { Account, AccountFilterValue, AppTab, ContentItem, InsightRecord } from "./types/models";
 
 const initialFilter: AccountFilterValue = { type: "all" };
 
@@ -15,6 +15,7 @@ function App() {
   const [accountFilter, setAccountFilter] = useState<AccountFilterValue>(initialFilter);
   const [accounts, setAccounts] = useState<Account[]>(() => storage.loadAccounts());
   const [contents, setContents] = useState<ContentItem[]>(() => storage.loadContents());
+  const [insights] = useState<InsightRecord[]>(() => storage.loadInsights());
   const filterAccounts = useMemo(
     () => accounts.filter((account) => account.isActive),
     [accounts],
@@ -45,7 +46,14 @@ function App() {
           onOpenAccountSettings={() => setActiveTab("accountSettings")}
         />
       )}
-      {activeTab === "performance" && <PerformanceTab />}
+      {activeTab === "performance" && (
+        <PerformanceTab
+          accounts={accounts}
+          contents={contents}
+          insights={insights}
+          accountFilter={accountFilter}
+        />
+      )}
       {activeTab === "accountSettings" && (
         <AccountSettingsTab accounts={accounts} onAccountsChange={setAccounts} />
       )}
