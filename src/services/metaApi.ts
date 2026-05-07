@@ -5,6 +5,8 @@ const instagramConnectionFields = "id,username,account_type,media_count";
 const threadsConnectionFields = "id,username,name";
 const instagramMediaFields = "id,caption,media_type,permalink,timestamp";
 const threadsMediaFields = "id,text,permalink,timestamp,media_type";
+const instagramInsightMetrics = "reach,views,likes,comments,saves,shares";
+const threadsInsightMetrics = "views,likes,replies,reposts,quotes,shares";
 
 export type ApiErrorStatus =
   | "not_implemented"
@@ -97,6 +99,22 @@ type MetaMediaListPayload = MetaApiErrorPayload & {
   data?: RawExternalMediaItem[];
 };
 
+type RawInsightMetric = {
+  name?: string;
+  values?: Array<{ value?: unknown }>;
+  value?: unknown;
+};
+
+type MetaInsightPayload = MetaApiErrorPayload & {
+  data?: RawInsightMetric[];
+};
+
+type InsightContext = {
+  account: Account;
+  mediaId: string;
+  measuredAt: string;
+};
+
 function getStubResult(): ApiErrorResult {
   return {
     ok: false,
@@ -153,6 +171,14 @@ function validateAccountForApi(account: Account, checkedAt: string): ApiErrorRes
   return null;
 }
 
+function validateMediaId(account: Account, mediaId: string, checkedAt: string): ApiErrorResult | null {
+  if (!mediaId.trim()) {
+    return createErrorResult("invalid_media", account, checkedAt);
+  }
+
+  return null;
+}
+
 function createConnectionUrl(account: Account) {
   const fields =
     account.platform === "instagram" ? instagramConnectionFields : threadsConnectionFields;
@@ -184,7 +210,26 @@ function createRecentMediaUrl(account: Account) {
   return url;
 }
 
-function mapMetaError(response: Response, payload: MetaApiErrorPayload): ApiErrorStatus {
+function createInsightUrl(account: Account, mediaId: string) {
+  const metrics = account.platform === "instagram" ? instagramInsightMetrics : threadsInsightMetrics;
+  const baseUrl =
+    account.platform === "instagram"
+      ? `https://graph.instagram.com/${mediaId}/insights`
+      : `https://graph.threads.net/v1.0/${mediaId}/insights`;
+  const url = new URL(baseUrl);
+
+  // Meta API metric 이름과 지원 범위는 실제 운영 전 최신 공식 문서 확인이 필요합니다.
+  url.searchParams.set("metric", metrics);
+  url.searchParams.set("access_token", account.accessToken ?? "");
+
+  return url;
+}
+
+function mapMetaError(
+  response: Response,
+  payload: MetaApiErrorPayload,
+  invalidResource: "account" | "media" = "account",
+): ApiErrorStatus {
   const errorCode = payload.error?.code;
   const errorType = payload.error?.type?.toLowerCase() ?? "";
   const errorMessage = payload.error?.message?.toLowerCase() ?? "";
@@ -198,7 +243,7 @@ function mapMetaError(response: Response, payload: MetaApiErrorPayload): ApiErro
   }
 
   if (response.status === 404 || errorCode === 100) {
-    return "invalid_account";
+    return invalidResource === "media" ? "invalid_media" : "invalid_account";
   }
 
   if (response.status === 429 || errorCode === 4 || errorCode === 17 || errorCode === 613) {
@@ -226,6 +271,49 @@ function normalizeExternalMediaItem(
     mediaType: rawItem.media_type,
     permalink: rawItem.permalink,
     publishedAt: rawItem.timestamp,
+  };
+}
+
+function readMetricValue(rawValue: unknown) {
+  if (typeof rawValue !== "number" || !Number.isFinite(rawValue)) {
+    return undefined;
+  }
+
+  return rawValue;
+}
+
+function getMetricValue(metrics: RawInsightMetric[], metricName: string) {
+  const metric = metrics.find((item) => item.name === metricName);
+  const rawValue = metric?.values?.[0]?.value ?? metric?.value;
+
+  return readMetricValue(rawValue);
+}
+
+function createNormalizedInsight(
+  raw: unknown,
+  context: InsightContext,
+  metricMap: Partial<Record<keyof NormalizedInsight, string>>,
+): NormalizedInsight {
+  const payload = raw as MetaInsightPayload;
+  const metrics = payload.data ?? [];
+
+  return {
+    accountId: context.account.id,
+    contentId: context.mediaId,
+    platform: context.account.platform,
+    source: "api",
+    measuredAt: context.measuredAt,
+    reach: metricMap.reach ? getMetricValue(metrics, metricMap.reach) : undefined,
+    views: metricMap.views ? getMetricValue(metrics, metricMap.views) : undefined,
+    likes: metricMap.likes ? getMetricValue(metrics, metricMap.likes) : undefined,
+    comments: metricMap.comments ? getMetricValue(metrics, metricMap.comments) : undefined,
+    saves: metricMap.saves ? getMetricValue(metrics, metricMap.saves) : undefined,
+    shares: metricMap.shares ? getMetricValue(metrics, metricMap.shares) : undefined,
+    replies: metricMap.replies ? getMetricValue(metrics, metricMap.replies) : undefined,
+    reposts: metricMap.reposts ? getMetricValue(metrics, metricMap.reposts) : undefined,
+    quotes: metricMap.quotes ? getMetricValue(metrics, metricMap.quotes) : undefined,
+    apiSyncStatus: "success",
+    lastSyncedAt: context.measuredAt,
   };
 }
 
@@ -283,16 +371,52 @@ export async function fetchRecentMedia(account: Account): Promise<ApiListResult<
 }
 
 export async function fetchMediaInsights(
-  _account: Account,
-  _mediaId: string,
+  account: Account,
+  mediaId: string,
 ): Promise<ApiItemResult<NormalizedInsight>> {
-  return getStubResult();
+  const measuredAt = new Date().toISOString();
+  const validationError =
+    validateAccountForApi(account, measuredAt) ?? validateMediaId(account, mediaId, measuredAt);
+
+  if (validationError) {
+    return validationError;
+  }
+
+  try {
+    const response = await fetch(createInsightUrl(account, mediaId));
+    const payload = (await response.json().catch(() => ({}))) as MetaInsightPayload;
+
+    if (!response.ok) {
+      return createErrorResult(mapMetaError(response, payload, "media"), account, measuredAt);
+    }
+
+    const context = { account, mediaId, measuredAt };
+    return account.platform === "instagram"
+      ? normalizeInstagramInsight(payload, context)
+      : normalizeThreadsInsight(payload, context);
+  } catch {
+    return createErrorResult("network_error", account, measuredAt);
+  }
 }
 
-export function normalizeInstagramInsight(_raw: unknown): NormalizedInsight | ApiErrorResult {
-  return getStubResult();
+export function normalizeInstagramInsight(raw: unknown, context: InsightContext): NormalizedInsight {
+  return createNormalizedInsight(raw, context, {
+    reach: "reach",
+    views: "views",
+    likes: "likes",
+    comments: "comments",
+    saves: "saves",
+    shares: "shares",
+  });
 }
 
-export function normalizeThreadsInsight(_raw: unknown): NormalizedInsight | ApiErrorResult {
-  return getStubResult();
+export function normalizeThreadsInsight(raw: unknown, context: InsightContext): NormalizedInsight {
+  return createNormalizedInsight(raw, context, {
+    views: "views",
+    likes: "likes",
+    replies: "replies",
+    reposts: "reposts",
+    quotes: "quotes",
+    shares: "shares",
+  });
 }

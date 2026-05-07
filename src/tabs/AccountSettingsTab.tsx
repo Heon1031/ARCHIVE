@@ -1,5 +1,11 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { checkConnection, fetchRecentMedia, type ExternalMediaItem } from "../services/metaApi";
+import {
+  checkConnection,
+  fetchMediaInsights,
+  fetchRecentMedia,
+  type ExternalMediaItem,
+  type NormalizedInsight,
+} from "../services/metaApi";
 import type { Account, AccountConnectionStatus, Platform } from "../types/models";
 
 type AccountSettingsTabProps = {
@@ -90,12 +96,18 @@ function getMediaPreview(media: ExternalMediaItem) {
   return previewText.length > 80 ? `${previewText.slice(0, 80)}...` : previewText;
 }
 
+function formatInsightValue(value?: number) {
+  return typeof value === "number" ? value.toLocaleString() : "-";
+}
+
 export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettingsTabProps) {
   const [form, setForm] = useState<AccountFormState>(emptyForm);
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [apiCheckMessageByAccountId, setApiCheckMessageByAccountId] = useState<Record<string, string>>({});
   const [recentMediaByAccountId, setRecentMediaByAccountId] = useState<Record<string, ExternalMediaItem[]>>({});
   const [recentMediaMessageByAccountId, setRecentMediaMessageByAccountId] = useState<Record<string, string>>({});
+  const [insightsByMediaId, setInsightsByMediaId] = useState<Record<string, NormalizedInsight>>({});
+  const [insightMessageByMediaId, setInsightMessageByMediaId] = useState<Record<string, string>>({});
 
   const activeCount = useMemo(
     () => accounts.filter((account) => account.isActive).length,
@@ -245,6 +257,27 @@ export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettin
     setRecentMediaMessageByAccountId((currentMessages) => ({
       ...currentMessages,
       [account.id]: result.message,
+    }));
+  }
+
+  async function handleFetchMediaInsights(account: Account, mediaId: string) {
+    const result = await fetchMediaInsights(account, mediaId);
+
+    if ("ok" in result) {
+      setInsightMessageByMediaId((currentMessages) => ({
+        ...currentMessages,
+        [mediaId]: result.message,
+      }));
+      return;
+    }
+
+    setInsightsByMediaId((currentInsights) => ({
+      ...currentInsights,
+      [mediaId]: result,
+    }));
+    setInsightMessageByMediaId((currentMessages) => ({
+      ...currentMessages,
+      [mediaId]: "인사이트를 불러왔습니다.",
     }));
   }
 
@@ -452,8 +485,36 @@ export function AccountSettingsTab({ accounts, onAccountsChange }: AccountSettin
                                 {media.publishedAt ?? "게시일 없음"} · {media.mediaType ?? "유형 없음"}
                               </p>
                               <p>{getMediaPreview(media)}</p>
+                              {insightMessageByMediaId[media.externalMediaId] && (
+                                <p>{insightMessageByMediaId[media.externalMediaId]}</p>
+                              )}
+                              {insightsByMediaId[media.externalMediaId] && (
+                                <div className="performance-metrics">
+                                  <span>도달 {formatInsightValue(insightsByMediaId[media.externalMediaId].reach)}</span>
+                                  <span>조회수 {formatInsightValue(insightsByMediaId[media.externalMediaId].views)}</span>
+                                  <span>좋아요 {formatInsightValue(insightsByMediaId[media.externalMediaId].likes)}</span>
+                                  <span>
+                                    댓글/답글{" "}
+                                    {formatInsightValue(
+                                      insightsByMediaId[media.externalMediaId].comments ??
+                                        insightsByMediaId[media.externalMediaId].replies,
+                                    )}
+                                  </span>
+                                  <span>저장 {formatInsightValue(insightsByMediaId[media.externalMediaId].saves)}</span>
+                                  <span>공유 {formatInsightValue(insightsByMediaId[media.externalMediaId].shares)}</span>
+                                  <span>리포스트 {formatInsightValue(insightsByMediaId[media.externalMediaId].reposts)}</span>
+                                  <span>인용 {formatInsightValue(insightsByMediaId[media.externalMediaId].quotes)}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
+                          <button
+                            className="secondary-button"
+                            type="button"
+                            onClick={() => void handleFetchMediaInsights(account, media.externalMediaId)}
+                          >
+                            인사이트 확인
+                          </button>
                           {media.permalink && (
                             <a className="secondary-button" href={media.permalink} target="_blank" rel="noreferrer">
                               링크 열기
