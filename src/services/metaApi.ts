@@ -3,11 +3,13 @@ import type { Account, InsightRecord, Platform } from "../types/models";
 const notImplementedMessage = "실제 API 연결은 8단계에서 구현됩니다.";
 const instagramConnectionFields = "id,username,account_type,media_count";
 const threadsConnectionFields = "id,username,name";
-const instagramMediaFields = "id,caption,media_type,permalink,timestamp";
-const threadsMediaFields = "id,text,permalink,timestamp,media_type";
+const instagramMediaFields = "id,caption,media_type,permalink,timestamp,media_url,thumbnail_url";
+const threadsMediaFields = "id,text,permalink,timestamp,media_type,media_url,thumbnail_url";
 const instagramImageInsightMetrics = ["reach", "saved", "comments", "likes"] as const;
 const instagramVideoInsightMetrics = ["reach", "plays", "comments", "likes"] as const;
 const threadsInsightMetrics = "views,likes,replies,reposts,quotes,shares";
+const maxMediaSyncCount = 200;
+const mediaPageLimit = 50;
 
 export type ApiErrorStatus =
   | "not_implemented"
@@ -61,6 +63,7 @@ export type ExternalMediaItem = {
   text?: string;
   mediaType?: string;
   permalink?: string;
+  thumbnailUrl?: string;
   publishedAt?: string;
 };
 
@@ -109,11 +112,19 @@ type RawExternalMediaItem = {
   media_type?: string;
   permalink?: string;
   url?: string;
+  media_url?: string;
+  thumbnail_url?: string;
   timestamp?: string;
 };
 
 type MetaMediaListPayload = MetaApiErrorPayload & {
   data?: RawExternalMediaItem[];
+  paging?: {
+    next?: string;
+    cursors?: {
+      after?: string;
+    };
+  };
 };
 
 type RawInsightMetric = {
@@ -239,7 +250,7 @@ function createConnectionUrl(account: Account) {
   return url;
 }
 
-function createRecentMediaUrl(account: Account) {
+function createRecentMediaUrl(account: Account, after?: string) {
   const fields = account.platform === "instagram" ? instagramMediaFields : threadsMediaFields;
   const baseUrl =
     account.platform === "instagram"
@@ -249,8 +260,12 @@ function createRecentMediaUrl(account: Account) {
 
   // Meta API endpoint와 fields는 실제 구현/운영 전 최신 공식 문서 확인이 필요합니다.
   url.searchParams.set("fields", fields);
-  url.searchParams.set("limit", "10");
+  url.searchParams.set("limit", String(mediaPageLimit));
   url.searchParams.set("access_token", account.accessToken ?? "");
+
+  if (after) {
+    url.searchParams.set("after", after);
+  }
 
   return url;
 }
@@ -330,6 +345,12 @@ function normalizeExternalMediaItem(
       : typeof rawItem.url === "string" && rawItem.url.trim()
         ? rawItem.url.trim()
         : undefined;
+  const thumbnailUrl =
+    typeof rawItem.thumbnail_url === "string" && rawItem.thumbnail_url.trim()
+      ? rawItem.thumbnail_url.trim()
+      : typeof rawItem.media_url === "string" && rawItem.media_url.trim()
+        ? rawItem.media_url.trim()
+        : undefined;
 
   if (!externalMediaId) {
     return null;
@@ -344,6 +365,7 @@ function normalizeExternalMediaItem(
     text: rawItem.text,
     mediaType: rawItem.media_type,
     permalink,
+    thumbnailUrl,
     publishedAt: rawItem.timestamp,
   };
 }
@@ -446,16 +468,43 @@ export async function fetchRecentMedia(account: Account): Promise<ApiListResult<
   }
 
   try {
-    const response = await fetch(createRecentMediaUrl(account));
-    const payload = (await response.json().catch(() => ({}))) as MetaMediaListPayload;
+    const allMedia: ExternalMediaItem[] = [];
+    let nextUrl: URL | string | undefined = createRecentMediaUrl(account);
+    let pageCount = 0;
 
-    if (!response.ok) {
-      return createErrorResult(mapMetaError(response, payload), account, checkedAt);
+    while (nextUrl && allMedia.length < maxMediaSyncCount && pageCount < 10) {
+      const response = await fetch(nextUrl);
+      const payload = (await response.json().catch(() => ({}))) as MetaMediaListPayload;
+
+      if (!response.ok) {
+        return createErrorResult(mapMetaError(response, payload), account, checkedAt);
+      }
+
+      const pageMedia = (payload.data ?? [])
+        .map((rawItem) => normalizeExternalMediaItem(rawItem, account))
+        .filter((item): item is ExternalMediaItem => item !== null);
+
+      allMedia.push(...pageMedia);
+      pageCount += 1;
+
+      if (allMedia.length >= maxMediaSyncCount) {
+        break;
+      }
+
+      if (payload.paging?.next) {
+        nextUrl = payload.paging.next;
+        continue;
+      }
+
+      if (payload.paging?.cursors?.after) {
+        nextUrl = createRecentMediaUrl(account, payload.paging.cursors.after);
+        continue;
+      }
+
+      nextUrl = undefined;
     }
 
-    return (payload.data ?? [])
-      .map((rawItem) => normalizeExternalMediaItem(rawItem, account))
-      .filter((item): item is ExternalMediaItem => item !== null);
+    return allMedia.slice(0, maxMediaSyncCount);
   } catch {
     return createErrorResult("network_error", account, checkedAt);
   }

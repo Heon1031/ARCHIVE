@@ -57,6 +57,7 @@ export type ContentItem = {
   publishedDate?: string;
   externalMediaId?: string;
   externalPermalink?: string;
+  externalThumbnailUrl?: string;
   draftMemo?: string;
   visualMemo?: string;
   reminderMemo?: string;

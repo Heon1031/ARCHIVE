@@ -38,8 +38,10 @@ function App() {
       title="콘텐츠 운영 대시보드"
       description="Instagram / Threads API 연결을 우선하는 멀티 계정 운영 도구"
     >
-      <TabNavigation activeTab={activeTab} onChange={setActiveTab} />
-      <AccountFilter accounts={filterAccounts} value={accountFilter} onChange={setAccountFilter} />
+      <div className="top-control-bar">
+        <TabNavigation activeTab={activeTab} onChange={setActiveTab} />
+        <AccountFilter accounts={filterAccounts} value={accountFilter} onChange={setAccountFilter} />
+      </div>
 
       {activeTab === "main" && (
         <MainTab

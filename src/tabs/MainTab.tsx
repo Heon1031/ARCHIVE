@@ -20,6 +20,7 @@ type ContentFormState = {
   publishedDate: string;
   externalMediaId: string;
   externalPermalink: string;
+  externalThumbnailUrl: string;
   draftMemo: string;
   visualMemo: string;
   reminderMemo: string;
@@ -36,6 +37,7 @@ const emptyForm: ContentFormState = {
   publishedDate: "",
   externalMediaId: "",
   externalPermalink: "",
+  externalThumbnailUrl: "",
   draftMemo: "",
   visualMemo: "",
   reminderMemo: "",
@@ -210,6 +212,55 @@ function hasInsightRecord(content: ContentItem, insights: InsightRecord[]) {
   );
 }
 
+function getReactionScore(insight: InsightRecord) {
+  return (
+    (insight.likes ?? 0) +
+    (insight.comments ?? 0) * 2 +
+    (insight.saves ?? 0) * 3 +
+    (insight.shares ?? 0) * 3 +
+    (insight.replies ?? 0) * 2 +
+    (insight.reposts ?? 0) * 3 +
+    (insight.quotes ?? 0) * 3
+  );
+}
+
+function getContentScore(content: ContentItem, insights: InsightRecord[]) {
+  const matchedInsights = insights.filter(
+    (insight) => insight.contentId === content.id && insight.accountId === content.accountId,
+  );
+
+  return matchedInsights.reduce((highestScore, insight) => {
+    return Math.max(highestScore, getReactionScore(insight));
+  }, 0);
+}
+
+function getLatestInsight(content: ContentItem, insights: InsightRecord[]) {
+  return insights
+    .filter((insight) => insight.contentId === content.id && insight.accountId === content.accountId)
+    .sort((first, second) => new Date(second.measuredAt).getTime() - new Date(first.measuredAt).getTime())[0];
+}
+
+function getRateLabel(numerator: number | undefined, denominator: number | undefined) {
+  if (!denominator || denominator <= 0 || numerator === undefined) {
+    return "-";
+  }
+
+  const rate = numerator / denominator;
+  return Number.isFinite(rate) ? `${(rate * 100).toFixed(1)}%` : "-";
+}
+
+function getRestDecision(monthContentCount: number) {
+  if (monthContentCount >= 12) {
+    return "이번 달 게시 흐름이 충분합니다. 이 날짜는 쉬어도 괜찮습니다.";
+  }
+
+  if (monthContentCount <= 4) {
+    return "최근 게시 빈도가 낮습니다. 짧은 글 하나로 흐름을 이어가세요.";
+  }
+
+  return "무리해서 채우기보다 다음 주제의 밀도를 보고 결정하세요.";
+}
+
 export function MainTab({
   accounts,
   contents,
@@ -221,6 +272,8 @@ export function MainTab({
   const [form, setForm] = useState<ContentFormState>(emptyForm);
   const [editingContentId, setEditingContentId] = useState<string | null>(null);
   const [visibleMonth, setVisibleMonth] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState(() => getDateKey(new Date()));
+  const [selectedContentId, setSelectedContentId] = useState<string | null>(null);
 
   const accountMap = useMemo(
     () => new Map(accounts.map((account) => [account.id, account])),
@@ -253,7 +306,28 @@ export function MainTab({
   const recommendations = getRecommendations(missingTopic, leastUsedFormat, recentKeywords);
   const todayKey = getDateKey(new Date());
   const todayItems = filteredContents.filter((content) => content.plannedDate === todayKey);
-  const reminderItems = filteredContents.filter((content) => content.reminderMemo);
+  const oldHighScoreContent = filteredContents
+    .filter((content) => {
+      const contentDate = getContentDate(content);
+      if (!contentDate) {
+        return false;
+      }
+
+      const daysAgo = (Date.now() - new Date(contentDate).getTime()) / (1000 * 60 * 60 * 24);
+      return daysAgo >= 30 && getContentScore(content, insights) > 0;
+    })
+    .sort((first, second) => getContentScore(second, insights) - getContentScore(first, insights))[0];
+  const reminderItems = oldHighScoreContent ? [oldHighScoreContent] : [];
+  const selectedDateItems = filteredContents.filter((content) => getContentDate(content) === selectedDate);
+  const selectedContent = selectedContentId
+    ? filteredContents.find((content) => content.id === selectedContentId)
+    : undefined;
+  const selectedContentInsight = selectedContent ? getLatestInsight(selectedContent, insights) : undefined;
+  const selectedDateRecommendations = getRecommendations(missingTopic, leastUsedFormat, recentKeywords);
+  const restDecision = getRestDecision(monthContents.length);
+  const productionCount = filteredContents.filter((content) =>
+    ["planned", "in_progress", "review", "scheduled"].includes(content.status),
+  ).length;
 
   function updateForm<Key extends keyof ContentFormState>(key: Key, value: ContentFormState[Key]) {
     setForm((currentForm) => ({ ...currentForm, [key]: value }));
@@ -262,6 +336,17 @@ export function MainTab({
   function resetForm() {
     setForm(emptyForm);
     setEditingContentId(null);
+  }
+
+  function prepareFormForDate(dateKey: string) {
+    setSelectedDate(dateKey);
+    setSelectedContentId(null);
+    setEditingContentId(null);
+    setForm({
+      ...emptyForm,
+      accountId: accounts[0]?.id ?? "",
+      plannedDate: dateKey,
+    });
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -285,6 +370,7 @@ export function MainTab({
       publishedDate: toOptionalValue(form.publishedDate),
       externalMediaId: toOptionalValue(form.externalMediaId),
       externalPermalink: toOptionalValue(form.externalPermalink),
+      externalThumbnailUrl: toOptionalValue(form.externalThumbnailUrl),
       draftMemo: toOptionalValue(form.draftMemo),
       visualMemo: toOptionalValue(form.visualMemo),
       reminderMemo: toOptionalValue(form.reminderMemo),
@@ -318,6 +404,8 @@ export function MainTab({
 
   function handleEdit(content: ContentItem) {
     setEditingContentId(content.id);
+    setSelectedContentId(content.id);
+    setSelectedDate(getContentDate(content) || selectedDate);
     setForm({
       accountId: content.accountId,
       title: content.title,
@@ -328,6 +416,7 @@ export function MainTab({
       publishedDate: content.publishedDate ?? "",
       externalMediaId: content.externalMediaId ?? "",
       externalPermalink: content.externalPermalink ?? "",
+      externalThumbnailUrl: content.externalThumbnailUrl ?? "",
       draftMemo: content.draftMemo ?? "",
       visualMemo: content.visualMemo ?? "",
       reminderMemo: content.reminderMemo ?? "",
@@ -342,6 +431,21 @@ export function MainTab({
         content.id === contentId ? { ...content, status: "on_hold", updatedAt: now } : content,
       ),
     );
+  }
+
+  function handleDelete(contentId: string) {
+    const shouldDelete = window.confirm("이 콘텐츠를 삭제할까요? 연결된 성과 기록은 남을 수 있습니다.");
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    onContentsChange(contents.filter((content) => content.id !== contentId));
+    setSelectedContentId((currentContentId) => (currentContentId === contentId ? null : currentContentId));
+
+    if (editingContentId === contentId) {
+      resetForm();
+    }
   }
 
   function moveMonth(offset: number) {
@@ -365,7 +469,7 @@ export function MainTab({
   }
 
   return (
-    <section className="tab-panel" aria-label="메인 탭">
+    <section className="tab-panel main-home-panel" aria-label="메인 탭">
       <div className="settings-header">
         <div>
           <h2>콘텐츠 운영</h2>
@@ -375,6 +479,29 @@ export function MainTab({
       </div>
 
       <div className="section-grid">
+        <div className="home-mini-grid">
+          <article className="panel-card home-mini-card">
+            <span>오늘 할 일</span>
+            <strong>{todayItems.length}</strong>
+            <p>{todayItems[0]?.title ?? "오늘은 달력만 가볍게 확인하세요."}</p>
+          </article>
+          <article className="panel-card home-mini-card">
+            <span>리마인드</span>
+            <strong>{oldHighScoreContent ? "1" : "0"}</strong>
+            <p>{oldHighScoreContent?.title ?? "다시 꺼내볼 콘텐츠 없음"}</p>
+          </article>
+          <article className="panel-card home-mini-card">
+            <span>이번 달 게시 수</span>
+            <strong>{publishedThisMonthCount}</strong>
+            <p>{formatMonthLabel(visibleMonth)} 기준</p>
+          </article>
+          <article className="panel-card home-mini-card">
+            <span>콘텐츠 흐름</span>
+            <strong>{productionCount}</strong>
+            <p>준비 중인 콘텐츠</p>
+          </article>
+        </div>
+
         <article className="panel-card panel-card--wide flow-summary-card">
           <div className="card-heading">
             <div>
@@ -416,7 +543,7 @@ export function MainTab({
           </div>
         </article>
 
-        <details className="panel-card panel-card--wide content-editor-card" open={Boolean(editingContentId)}>
+        <details className="panel-card panel-card--wide content-editor-card">
           <summary>{editingContentId ? "콘텐츠 수정" : "콘텐츠 직접 추가"}</summary>
           <div className="card-heading">
             <div>
@@ -633,6 +760,13 @@ export function MainTab({
                 <div
                   className={`calendar-cell ${day.isBlank ? "calendar-cell--blank" : ""}`}
                   key={day.dateKey}
+                  onClick={() => {
+                    if (!day.isBlank) {
+                      prepareFormForDate(day.dateKey);
+                    }
+                  }}
+                  role={day.isBlank ? undefined : "button"}
+                  tabIndex={day.isBlank ? undefined : 0}
                 >
                   {!day.isBlank && <span className="calendar-day">{day.day}</span>}
                   {dayContents.map((content) => (
@@ -640,7 +774,11 @@ export function MainTab({
                       className="calendar-content-card"
                       key={content.id}
                       type="button"
-                      onClick={() => handleEdit(content)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelectedDate(getContentDate(content) || day.dateKey);
+                        setSelectedContentId(content.id);
+                      }}
                     >
                       <span>{platformLabels[content.platform]}</span>
                       <strong>{content.title}</strong>
@@ -649,6 +787,16 @@ export function MainTab({
                         {statusLabels[content.status]} · {formatLabels[content.format ?? "other"]} ·{" "}
                         {content.topic ?? "기타"}
                       </small>
+                      <span className="calendar-hover-preview">
+                        <b>{content.title}</b>
+                        <em>{content.caption ?? content.text ?? content.draftMemo ?? "본문 미리보기 없음"}</em>
+                        <em>
+                          {platformLabels[content.platform]} · {formatLabels[content.format ?? "other"]} ·{" "}
+                          {content.topic ?? "기타"}
+                        </em>
+                        <em>{getContentKeywords(content).join(", ") || "키워드 없음"}</em>
+                        <em>{hasInsightRecord(content, insights) ? "인사이트 있음" : "인사이트 없음"}</em>
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -660,54 +808,210 @@ export function MainTab({
           )}
         </article>
 
-        <article className="panel-card panel-card--wide">
-          <h3>콘텐츠 DB</h3>
-          {filteredContents.length === 0 ? (
-            <p>선택한 필터에 해당하는 게시물 기록이 없습니다.</p>
-          ) : (
-            <div className="content-db-table">
-              <div className="content-db-row content-db-row--head">
-                <span>게시일</span>
-                <span>플랫폼</span>
-                <span>계정</span>
-                <span>제목</span>
-                <span>형식</span>
-                <span>주제</span>
-                <span>키워드</span>
-                <span>상태</span>
-                <span>성과</span>
-                <span>링크</span>
+        <article className="panel-card panel-card--wide date-management-card">
+          <div className="card-heading">
+            <div>
+              <h3>{selectedDate} 콘텐츠 관리</h3>
+              <p>날짜를 누르면 이곳에서 추가, 수정, 삭제를 바로 처리합니다.</p>
+            </div>
+            <span className="badge">{selectedDateItems.length}개</span>
+          </div>
+
+          <div className="operation-judgement-grid">
+            <div className="operation-judgement-card">
+              <span>쉬어도 되는지</span>
+              <strong>{selectedDateItems.length > 0 ? "게시 있음" : "판단 필요"}</strong>
+              <p>{selectedDateItems.length > 0 ? "이미 올린 게시물의 성과를 확인하세요." : restDecision}</p>
+            </div>
+            <div className="operation-judgement-card">
+              <span>추천 주제</span>
+              <strong>{missingTopic}</strong>
+              <p>최근 적게 다룬 주제라 다음 소재 후보로 볼 수 있습니다.</p>
+            </div>
+            <div className="operation-judgement-card">
+              <span>추천 형식</span>
+              <strong>{leastUsedFormat}</strong>
+              <p>반복을 줄이고 콘텐츠 리듬을 바꾸는 선택지입니다.</p>
+            </div>
+            <div className="operation-judgement-card">
+              <span>참고할 과거 글</span>
+              <strong>{oldHighScoreContent?.title ?? "없음"}</strong>
+              <p>{oldHighScoreContent ? "반응이 좋았던 게시물을 변주해볼 수 있습니다." : "성과가 쌓이면 참고 후보가 표시됩니다."}</p>
+            </div>
+          </div>
+
+          {selectedContent && (
+            <div className="selected-content-detail">
+              <div className="content-thumbnail">
+                {selectedContent.externalThumbnailUrl ? (
+                  <img src={selectedContent.externalThumbnailUrl} alt="" />
+                ) : (
+                  <span>{platformLabels[selectedContent.platform]}</span>
+                )}
               </div>
-              {filteredContents.map((content) => (
-                <div className="content-db-row" key={content.id}>
-                  <span>{getContentDate(content) || "-"}</span>
-                  <span>{platformLabels[content.platform]}</span>
-                  <span>{accountMap.get(content.accountId)?.displayName ?? "-"}</span>
-                  <strong>{content.title}</strong>
-                  <span>{formatLabels[content.format ?? "other"]}</span>
-                  <span>{content.topic ?? "기타"}</span>
-                  <span>{getContentKeywords(content).join(", ") || "키워드 없음"}</span>
-                  <span>{statusLabels[content.status]}</span>
-                  <span>{hasInsightRecord(content, insights) ? "있음" : "없음"}</span>
-                  <div className="account-card__actions">
-                    {content.externalPermalink ? (
-                      <a href={content.externalPermalink} target="_blank" rel="noreferrer">
-                        열기
-                      </a>
-                    ) : (
-                      <span>-</span>
+              <div className="selected-content-copy">
+                <span className="badge">{platformLabels[selectedContent.platform]}</span>
+                <h3>{selectedContent.title}</h3>
+                <p>{selectedContent.caption ?? selectedContent.text ?? selectedContent.draftMemo ?? "본문 미리보기가 없습니다."}</p>
+                <div className="insight-summary-row">
+                  <span>반응 점수 {selectedContentInsight ? getReactionScore(selectedContentInsight) : "-"}</span>
+                  <span>
+                    저장률{" "}
+                    {getRateLabel(
+                      selectedContentInsight?.saves,
+                      selectedContentInsight?.reach ?? selectedContentInsight?.views,
                     )}
+                  </span>
+                  <span>{hasInsightRecord(selectedContent, insights) ? "성과 기록 있음" : "성과 기록 없음"}</span>
+                </div>
+                <div className="keyword-row">
+                  <b>{accountMap.get(selectedContent.accountId)?.displayName ?? "계정 없음"}</b>
+                  <b>{selectedContent.publishedDate ?? selectedContent.plannedDate ?? "날짜 없음"}</b>
+                  <b>{formatLabels[selectedContent.format ?? "other"]}</b>
+                  <b>{selectedContent.topic ?? "기타"}</b>
+                  {getContentKeywords(selectedContent).slice(0, 3).map((keyword) => (
+                    <b key={keyword}>{keyword}</b>
+                  ))}
+                </div>
+                <div className="account-card__actions">
+                  {selectedContent.externalPermalink && (
+                    <a className="secondary-button" href={selectedContent.externalPermalink} target="_blank" rel="noreferrer">
+                      링크 열기
+                    </a>
+                  )}
+                  <button className="secondary-button" type="button" disabled>
+                    인사이트 확인
+                  </button>
+                  <button className="secondary-button" type="button" onClick={() => handleEdit(selectedContent)}>
+                    수정
+                  </button>
+                  <button className="danger-button" type="button" onClick={() => handleDelete(selectedContent.id)}>
+                    삭제
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {selectedDateItems.length > 0 ? (
+            <div className="date-content-strip">
+              {selectedDateItems.map((content) => (
+                <div className="date-content-card" key={content.id}>
+                  <strong>{content.title}</strong>
+                  <p>
+                    {platformLabels[content.platform]} · {formatLabels[content.format ?? "other"]} ·{" "}
+                    {content.topic ?? "기타"}
+                  </p>
+                  <div className="account-card__actions">
                     <button className="secondary-button" type="button" onClick={() => handleEdit(content)}>
                       수정
+                    </button>
+                    <button className="danger-button" type="button" onClick={() => handleDelete(content.id)}>
+                      삭제
                     </button>
                   </div>
                 </div>
               ))}
             </div>
+          ) : (
+            <div className="date-recommendation-card">
+              <strong>이 날짜에는 아직 콘텐츠가 없습니다.</strong>
+              {selectedDateRecommendations.map((recommendation) => (
+                <p key={recommendation}>{recommendation}</p>
+              ))}
+            </div>
           )}
+
+          <form className="account-form date-editor-form" onSubmit={handleSubmit}>
+            <fieldset>
+              <legend>{editingContentId ? "선택한 콘텐츠 수정" : "이 날짜에 콘텐츠 추가"}</legend>
+              <div className="form-grid">
+                <label className="form-field">
+                  <span>계정</span>
+                  <select
+                    required
+                    value={form.accountId}
+                    onChange={(event) => updateForm("accountId", event.target.value)}
+                  >
+                    <option value="">계정 선택</option>
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.displayName} · {platformLabels[account.platform]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-field">
+                  <span>제목</span>
+                  <input
+                    required
+                    value={form.title}
+                    onChange={(event) => updateForm("title", event.target.value)}
+                    placeholder="오늘 올릴 이야기"
+                  />
+                </label>
+                <label className="form-field">
+                  <span>형식</span>
+                  <select
+                    value={form.format}
+                    onChange={(event) =>
+                      updateForm("format", event.target.value as ContentFormState["format"])
+                    }
+                  >
+                    {Object.entries(formatLabels).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-field">
+                  <span>주제</span>
+                  <input
+                    value={form.topic}
+                    onChange={(event) => updateForm("topic", event.target.value)}
+                    placeholder="가족, 일상, 창작..."
+                  />
+                </label>
+                <label className="form-field">
+                  <span>상태</span>
+                  <select
+                    value={form.status}
+                    onChange={(event) => updateForm("status", event.target.value as ContentStatus)}
+                  >
+                    {Object.entries(statusLabels).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-field">
+                  <span>날짜</span>
+                  <input
+                    type="date"
+                    value={form.plannedDate || selectedDate}
+                    onChange={(event) => {
+                      updateForm("plannedDate", event.target.value);
+                      setSelectedDate(event.target.value || selectedDate);
+                    }}
+                  />
+                </label>
+              </div>
+            </fieldset>
+            <div className="form-actions">
+              <button className="primary-button" type="submit">
+                {editingContentId ? "수정 저장" : "콘텐츠 추가"}
+              </button>
+              <button className="secondary-button" type="button" onClick={() => prepareFormForDate(selectedDate)}>
+                새로 입력
+              </button>
+            </div>
+          </form>
         </article>
 
-        <article className="panel-card panel-card--wide legacy-content-list">
+        <details className="panel-card panel-card--wide legacy-content-list">
+          <summary>기획 목록 보기</summary>
           <h3>콘텐츠 기획 목록</h3>
           {filteredContents.length === 0 ? (
             <p>선택된 필터에 해당하는 콘텐츠가 없습니다.</p>
@@ -728,7 +1032,7 @@ export function MainTab({
               ))}
             </div>
           )}
-        </article>
+        </details>
 
         <article className="panel-card">
           <h3>제작 상태 요약</h3>

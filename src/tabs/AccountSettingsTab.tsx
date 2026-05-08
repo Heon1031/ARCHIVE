@@ -77,6 +77,27 @@ const platformLabels: Record<Platform, string> = {
   other: "Other",
 };
 
+const contentStatusLabels: Record<ContentItem["status"], string> = {
+  idea: "기획",
+  planned: "계획",
+  in_progress: "제작 중",
+  review: "검토",
+  scheduled: "예약 예정",
+  published: "게시 완료",
+  on_hold: "보류",
+  archived: "보관",
+};
+
+const contentFormatLabels: Record<NonNullable<ContentItem["format"]>, string> = {
+  post: "이미지/일반",
+  reel: "릴스/영상",
+  thread: "Threads",
+  carousel: "캐러셀",
+  story: "스토리",
+  article: "긴 글",
+  other: "기타",
+};
+
 const connectionStatusLabels: Record<AccountConnectionStatus, string> = {
   connected: "연결됨",
   needs_check: "확인 필요",
@@ -249,6 +270,28 @@ function findMatchedContent(contents: ContentItem[], accountId: string, mediaId:
   );
 }
 
+function getContentDate(content: ContentItem) {
+  return content.publishedDate ?? content.plannedDate ?? "";
+}
+
+function getContentKeywords(content: ContentItem) {
+  if (content.topicKeywords && content.topicKeywords.length > 0) {
+    return content.topicKeywords.slice(0, 5);
+  }
+
+  const sourceText = [content.title, content.topic, content.caption, content.text]
+    .filter(Boolean)
+    .join(" ");
+  const matches = sourceText.match(/[가-힣A-Za-z0-9#]{2,}/g) ?? [];
+  return Array.from(new Set(matches.map((keyword) => keyword.replace(/^#/, "")).filter(Boolean))).slice(0, 5);
+}
+
+function hasInsightRecord(content: ContentItem, insights: InsightRecord[]) {
+  return insights.some(
+    (insight) => insight.contentId === content.id && insight.accountId === content.accountId,
+  );
+}
+
 function upsertContentsFromMedia(
   contents: ContentItem[],
   account: Account,
@@ -285,6 +328,7 @@ function upsertContentsFromMedia(
       publishedDate,
       externalMediaId,
       externalPermalink: media.permalink,
+      externalThumbnailUrl: media.thumbnailUrl,
       source: "api" as const,
       updatedAt: now,
     };
@@ -350,6 +394,54 @@ function toInsightRecord(
     ...baseRecord,
     createdAt: now,
   };
+}
+
+function toFailedInsightRecord(
+  content: ContentItem,
+  account: Account,
+  existingInsight: InsightRecord | undefined,
+  message: string,
+) {
+  const now = new Date().toISOString();
+  const baseRecord = {
+    contentId: content.id,
+    accountId: account.id,
+    platform: account.platform,
+    source: "api" as const,
+    measuredAt: now,
+    apiSyncStatus: "failed" as const,
+    syncErrorMessage: message,
+    updatedAt: now,
+  };
+
+  if (existingInsight) {
+    return {
+      ...existingInsight,
+      ...baseRecord,
+    };
+  }
+
+  return {
+    id: createId(),
+    ...baseRecord,
+    createdAt: now,
+  };
+}
+
+function getMediaTypeForInsight(content: ContentItem) {
+  if (content.format === "carousel") {
+    return "CAROUSEL_ALBUM";
+  }
+
+  if (content.format === "reel") {
+    return "REELS";
+  }
+
+  if (content.format === "post") {
+    return "IMAGE";
+  }
+
+  return undefined;
 }
 
 function parseManualMetric(value: string) {
@@ -418,6 +510,7 @@ export function AccountSettingsTab({
   const [recentMediaByAccountId, setRecentMediaByAccountId] = useState<Record<string, ExternalMediaItem[]>>({});
   const [recentMediaMessageByAccountId, setRecentMediaMessageByAccountId] = useState<Record<string, string>>({});
   const [recentMediaFailureByAccountId, setRecentMediaFailureByAccountId] = useState<Record<string, boolean>>({});
+  const [insightSyncMessageByAccountId, setInsightSyncMessageByAccountId] = useState<Record<string, string>>({});
   const [insightsByMediaId, setInsightsByMediaId] = useState<Record<string, NormalizedInsight>>({});
   const [insightMessageByMediaId, setInsightMessageByMediaId] = useState<Record<string, string>>({});
   const [selectedContentByMediaId, setSelectedContentByMediaId] = useState<Record<string, string>>({});
@@ -699,6 +792,78 @@ export function AccountSettingsTab({
         ? `정상 수치 반환: 인사이트를 불러왔습니다. 사용한 게시물 ID: ${externalMediaId}`
         : `metric 없음: API 응답은 성공했지만 지원되는 인사이트 지표를 찾지 못했습니다. metric 이름 또는 권한을 Meta 공식 문서 기준으로 확인해야 합니다. 사용한 게시물 ID: ${externalMediaId}`,
     }));
+  }
+
+  async function handleSyncInsights(account: Account) {
+    const accountContents = contents.filter(
+      (content) =>
+        content.accountId === account.id &&
+        content.externalMediaId &&
+        !insights.some(
+          (insight) =>
+            insight.contentId === content.id &&
+            insight.accountId === account.id &&
+            insight.platform === account.platform &&
+            insight.source === "api",
+        ),
+    );
+    const targetContents = accountContents.slice(0, 10);
+
+    if (targetContents.length === 0) {
+      setInsightSyncMessageByAccountId((currentMessages) => ({
+        ...currentMessages,
+        [account.id]: "집계할 새 게시물이 없습니다. 이미 API 성과 기록이 있는 게시물은 건너뜁니다.",
+      }));
+      return;
+    }
+
+    let successCount = 0;
+    let failedCount = 0;
+    let nextInsights = [...insights];
+
+    setInsightSyncMessageByAccountId((currentMessages) => ({
+      ...currentMessages,
+      [account.id]: `인사이트 순차 집계를 시작합니다. 대상 ${targetContents.length}개`,
+    }));
+
+    for (const content of targetContents) {
+      const mediaId = content.externalMediaId?.trim();
+
+      if (!mediaId) {
+        failedCount += 1;
+        continue;
+      }
+
+      const existingInsight = nextInsights.find(
+        (insight) =>
+          insight.contentId === content.id &&
+          insight.accountId === account.id &&
+          insight.platform === account.platform &&
+          insight.source === "api",
+      );
+      const result = await fetchMediaInsights(account, mediaId, getMediaTypeForInsight(content));
+
+      if ("ok" in result) {
+        const failedInsight = toFailedInsightRecord(content, account, existingInsight, result.message);
+        nextInsights = existingInsight
+          ? nextInsights.map((insight) => (insight.id === existingInsight.id ? failedInsight : insight))
+          : [...nextInsights, failedInsight];
+        failedCount += 1;
+      } else {
+        const syncedInsight = toInsightRecord(result, existingInsight, content.id, account);
+        nextInsights = existingInsight
+          ? nextInsights.map((insight) => (insight.id === existingInsight.id ? syncedInsight : insight))
+          : [...nextInsights, syncedInsight];
+        successCount += 1;
+      }
+
+      setInsightSyncMessageByAccountId((currentMessages) => ({
+        ...currentMessages,
+        [account.id]: `인사이트 ${successCount + failedCount}/${targetContents.length}개 집계 완료 · 실패 ${failedCount}개`,
+      }));
+    }
+
+    onInsightsChange(nextInsights);
   }
 
   function handleSaveInsight(account: Account, media: ExternalMediaItem) {
@@ -1056,12 +1221,22 @@ export function AccountSettingsTab({
                       >
                         게시물 가져오기
                       </button>
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() => void handleSyncInsights(account)}
+                      >
+                        인사이트 순차 집계
+                      </button>
                     </div>
                     {apiCheckMessageByAccountId[account.id] && (
                       <p className="api-result-message">{apiCheckMessageByAccountId[account.id]}</p>
                     )}
                     {recentMediaMessageByAccountId[account.id] && (
                       <p className="api-result-message">{recentMediaMessageByAccountId[account.id]}</p>
+                    )}
+                    {insightSyncMessageByAccountId[account.id] && (
+                      <p className="api-result-message">{insightSyncMessageByAccountId[account.id]}</p>
                     )}
                     {((account.platform !== "instagram" && account.platform !== "threads") ||
                       recentMediaFailureByAccountId[account.id]) &&
@@ -1214,6 +1389,63 @@ export function AccountSettingsTab({
               ))}
             </div>
           )}
+        </article>
+
+        <article className="panel-card panel-card--wide">
+          <details className="api-detail-panel">
+            <summary>콘텐츠 DB 관리</summary>
+            <p>동기화된 게시물을 관리자용 표로 확인합니다. 홈 화면에는 요약과 달력만 보여줍니다.</p>
+            {contents.length === 0 ? (
+              <p>아직 동기화된 게시물 기록이 없습니다.</p>
+            ) : (
+              <div className="content-db-table">
+                <div className="content-db-row content-db-row--head">
+                  <span>게시일</span>
+                  <span>플랫폼</span>
+                  <span>계정</span>
+                  <span>제목</span>
+                  <span>형식</span>
+                  <span>주제</span>
+                  <span>키워드</span>
+                  <span>상태</span>
+                  <span>성과</span>
+                  <span>링크</span>
+                  <span>관리</span>
+                </div>
+                {contents.map((content) => {
+                  const account = accounts.find((currentAccount) => currentAccount.id === content.accountId);
+
+                  return (
+                    <div className="content-db-row" key={content.id}>
+                      <span>{getContentDate(content) || "-"}</span>
+                      <span>{platformLabels[content.platform]}</span>
+                      <span>{account?.displayName ?? "-"}</span>
+                      <strong>{content.title}</strong>
+                      <span>{contentFormatLabels[content.format ?? "other"]}</span>
+                      <span>{content.topic ?? "기타"}</span>
+                      <span>{getContentKeywords(content).join(", ") || "키워드 없음"}</span>
+                      <span>{contentStatusLabels[content.status]}</span>
+                      <span>{hasInsightRecord(content, insights) ? "있음" : "없음"}</span>
+                      {content.externalPermalink ? (
+                        <a href={content.externalPermalink} target="_blank" rel="noreferrer">
+                          열기
+                        </a>
+                      ) : (
+                        <span>-</span>
+                      )}
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() => window.alert("메인 달력에서 날짜를 선택해 콘텐츠를 수정하세요.")}
+                      >
+                        수정
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </details>
         </article>
 
         <article className="panel-card">
