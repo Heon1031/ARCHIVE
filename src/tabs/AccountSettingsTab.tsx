@@ -769,129 +769,134 @@ export function AccountSettingsTab({
                       <span>토큰 만료일: {account.tokenExpiresAt ?? "없음"}</span>
                     </div>
                   </div>
-                  {apiCheckMessageByAccountId[account.id] && (
-                    <p className="api-result-message">{apiCheckMessageByAccountId[account.id]}</p>
-                  )}
-                  {recentMediaMessageByAccountId[account.id] && (
-                    <p className="api-result-message">{recentMediaMessageByAccountId[account.id]}</p>
-                  )}
-                  {((account.platform !== "instagram" && account.platform !== "threads") ||
-                    recentMediaFailureByAccountId[account.id]) &&
-                    renderManualInsightForm(account, `account:${account.id}`)}
-                  {recentMediaByAccountId[account.id]?.length > 0 && (
-                    <div className="compact-list">
-                      {recentMediaByAccountId[account.id].map((media) => {
-                        const accountContents = contents.filter((content) => content.accountId === account.id);
-                        const matchedContent = findMatchedContent(contents, account.id, media.externalMediaId);
-                        const selectedContentId =
-                          selectedContentByMediaId[media.externalMediaId] ?? matchedContent?.id ?? "";
+                  <details className="api-detail-panel">
+                    <summary>게시물/성과 관리 펼치기</summary>
+                    <div className="account-card__actions">
+                      <button
+                        className="primary-button"
+                        type="button"
+                        onClick={() => void handleCheckConnection(account)}
+                      >
+                        API 연결 확인
+                      </button>
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() => void handleFetchRecentMedia(account)}
+                      >
+                        최근 게시물 확인
+                      </button>
+                    </div>
+                    {apiCheckMessageByAccountId[account.id] && (
+                      <p className="api-result-message">{apiCheckMessageByAccountId[account.id]}</p>
+                    )}
+                    {recentMediaMessageByAccountId[account.id] && (
+                      <p className="api-result-message">{recentMediaMessageByAccountId[account.id]}</p>
+                    )}
+                    {((account.platform !== "instagram" && account.platform !== "threads") ||
+                      recentMediaFailureByAccountId[account.id]) &&
+                      renderManualInsightForm(account, `account:${account.id}`)}
+                    {recentMediaByAccountId[account.id]?.length > 0 && (
+                      <div className="compact-list">
+                        {recentMediaByAccountId[account.id].map((media) => {
+                          const accountContents = contents.filter((content) => content.accountId === account.id);
+                          const matchedContent = findMatchedContent(contents, account.id, media.externalMediaId);
+                          const selectedContentId =
+                            selectedContentByMediaId[media.externalMediaId] ?? matchedContent?.id ?? "";
 
-                        return (
-                        <div className="content-row" key={media.id}>
-                          <div className="content-summary">
-                            <div>
-                              <strong>{media.externalMediaId}</strong>
-                              <p>
-                                {media.publishedAt ?? "게시일 없음"} · {media.mediaType ?? "유형 없음"}
-                              </p>
-                              <p>{getMediaPreview(media)}</p>
-                              {insightMessageByMediaId[media.externalMediaId] && (
-                                <p>{insightMessageByMediaId[media.externalMediaId]}</p>
-                              )}
-                              {insightFailureByMediaId[media.externalMediaId] &&
-                                renderManualInsightForm(
-                                  account,
-                                  `media:${media.externalMediaId}`,
-                                  selectedContentId,
+                          return (
+                          <div className="content-row" key={media.id}>
+                            <div className="content-summary">
+                              <div>
+                                <strong>{media.externalMediaId}</strong>
+                                <p>
+                                  {media.publishedAt ?? "게시일 없음"} · {media.mediaType ?? "유형 없음"}
+                                </p>
+                                <p>{getMediaPreview(media)}</p>
+                                {insightMessageByMediaId[media.externalMediaId] && (
+                                  <p>{insightMessageByMediaId[media.externalMediaId]}</p>
                                 )}
-                              {insightsByMediaId[media.externalMediaId] && (
-                                <div className="performance-metrics">
-                                  <span>도달 {formatInsightValue(insightsByMediaId[media.externalMediaId].reach)}</span>
-                                  <span>조회수 {formatInsightValue(insightsByMediaId[media.externalMediaId].views)}</span>
-                                  <span>좋아요 {formatInsightValue(insightsByMediaId[media.externalMediaId].likes)}</span>
-                                  <span>
-                                    댓글/답글{" "}
-                                    {formatInsightValue(
-                                      insightsByMediaId[media.externalMediaId].comments ??
-                                        insightsByMediaId[media.externalMediaId].replies,
-                                    )}
-                                  </span>
-                                  <span>저장 {formatInsightValue(insightsByMediaId[media.externalMediaId].saves)}</span>
-                                  <span>공유 {formatInsightValue(insightsByMediaId[media.externalMediaId].shares)}</span>
-                                  <span>리포스트 {formatInsightValue(insightsByMediaId[media.externalMediaId].reposts)}</span>
-                                  <span>인용 {formatInsightValue(insightsByMediaId[media.externalMediaId].quotes)}</span>
-                                </div>
-                              )}
-                              {insightsByMediaId[media.externalMediaId] && (
-                                <div className="placeholder-form">
-                                  <label className="form-field">
-                                    <span>성과를 연결할 콘텐츠</span>
-                                    <select
-                                      value={selectedContentId}
-                                      onChange={(event) =>
-                                        setSelectedContentByMediaId((currentSelections) => ({
-                                          ...currentSelections,
-                                          [media.externalMediaId]: event.target.value,
-                                        }))
-                                      }
-                                    >
-                                      <option value="">콘텐츠 선택</option>
-                                      {accountContents.map((content) => (
-                                        <option key={content.id} value={content.id}>
-                                          {matchedContent?.id === content.id ? "매칭됨 · " : ""}
-                                          {getContentOptionLabel(content)}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </label>
-                                  {saveInsightMessageByMediaId[media.externalMediaId] && (
-                                    <p>{saveInsightMessageByMediaId[media.externalMediaId]}</p>
+                                {insightFailureByMediaId[media.externalMediaId] &&
+                                  renderManualInsightForm(
+                                    account,
+                                    `media:${media.externalMediaId}`,
+                                    selectedContentId,
                                   )}
-                                </div>
-                              )}
+                                {insightsByMediaId[media.externalMediaId] && (
+                                  <div className="performance-metrics">
+                                    <span>도달 {formatInsightValue(insightsByMediaId[media.externalMediaId].reach)}</span>
+                                    <span>조회수 {formatInsightValue(insightsByMediaId[media.externalMediaId].views)}</span>
+                                    <span>좋아요 {formatInsightValue(insightsByMediaId[media.externalMediaId].likes)}</span>
+                                    <span>
+                                      댓글/답글{" "}
+                                      {formatInsightValue(
+                                        insightsByMediaId[media.externalMediaId].comments ??
+                                          insightsByMediaId[media.externalMediaId].replies,
+                                      )}
+                                    </span>
+                                    <span>저장 {formatInsightValue(insightsByMediaId[media.externalMediaId].saves)}</span>
+                                    <span>공유 {formatInsightValue(insightsByMediaId[media.externalMediaId].shares)}</span>
+                                    <span>리포스트 {formatInsightValue(insightsByMediaId[media.externalMediaId].reposts)}</span>
+                                    <span>인용 {formatInsightValue(insightsByMediaId[media.externalMediaId].quotes)}</span>
+                                  </div>
+                                )}
+                                {insightsByMediaId[media.externalMediaId] && (
+                                  <div className="placeholder-form">
+                                    <label className="form-field">
+                                      <span>성과를 연결할 콘텐츠</span>
+                                      <select
+                                        value={selectedContentId}
+                                        onChange={(event) =>
+                                          setSelectedContentByMediaId((currentSelections) => ({
+                                            ...currentSelections,
+                                            [media.externalMediaId]: event.target.value,
+                                          }))
+                                        }
+                                      >
+                                        <option value="">콘텐츠 선택</option>
+                                        {accountContents.map((content) => (
+                                          <option key={content.id} value={content.id}>
+                                            {matchedContent?.id === content.id ? "매칭됨 · " : ""}
+                                            {getContentOptionLabel(content)}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </label>
+                                    {saveInsightMessageByMediaId[media.externalMediaId] && (
+                                      <p>{saveInsightMessageByMediaId[media.externalMediaId]}</p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                          <button
-                            className="secondary-button"
-                            type="button"
-                            onClick={() => void handleFetchMediaInsights(account, media.externalMediaId)}
-                          >
-                            인사이트 확인
-                          </button>
-                          {media.permalink && (
-                            <a className="secondary-button" href={media.permalink} target="_blank" rel="noreferrer">
-                              링크 열기
-                            </a>
-                          )}
-                          {insightsByMediaId[media.externalMediaId] && (
                             <button
                               className="secondary-button"
                               type="button"
-                              onClick={() => handleSaveInsight(account, media)}
+                              onClick={() => void handleFetchMediaInsights(account, media.externalMediaId)}
                             >
-                              성과로 저장
+                              인사이트 확인
                             </button>
-                          )}
-                        </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                            {media.permalink && (
+                              <a className="secondary-button" href={media.permalink} target="_blank" rel="noreferrer">
+                                링크 열기
+                              </a>
+                            )}
+                            {insightsByMediaId[media.externalMediaId] && (
+                              <button
+                                className="secondary-button"
+                                type="button"
+                                onClick={() => handleSaveInsight(account, media)}
+                              >
+                                성과로 저장
+                              </button>
+                            )}
+                          </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </details>
                   <div className="account-card__actions">
-                    <button
-                      className="primary-button"
-                      type="button"
-                      onClick={() => void handleCheckConnection(account)}
-                    >
-                      API 연결 확인
-                    </button>
-                    <button
-                      className="secondary-button"
-                      type="button"
-                      onClick={() => void handleFetchRecentMedia(account)}
-                    >
-                      최근 게시물 확인
-                    </button>
                     <button className="secondary-button" type="button" onClick={() => handleEdit(account)}>
                       수정
                     </button>

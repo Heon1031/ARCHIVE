@@ -321,6 +321,27 @@ textarea {
   justify-content: flex-end;
 }
 
+.api-detail-panel {
+  border-top: 1px solid #e1e6ee;
+  padding-top: 10px;
+}
+
+.api-detail-panel summary {
+  color: #405066;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.api-detail-panel[open] {
+  display: grid;
+  gap: 12px;
+}
+
+.api-detail-panel[open] summary {
+  margin-bottom: 2px;
+}
+
 .badge--success {
   border-color: #9ac4aa;
   color: #23613a;

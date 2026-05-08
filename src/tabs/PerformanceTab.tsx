@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { Account, AccountFilterValue, ContentItem, InsightRecord, Platform } from "../types/models";
 
 type PerformanceTabProps = {
@@ -127,7 +127,6 @@ function getLatestInsight(insights: InsightRecord[]) {
 }
 
 export function PerformanceTab({ accounts, contents, insights, accountFilter }: PerformanceTabProps) {
-  const [apiImportMessage, setApiImportMessage] = useState("");
   const scopedAccounts = useMemo(() => filterAccounts(accounts, accountFilter), [accountFilter, accounts]);
   const scopedContents = useMemo(
     () => applyAccountFilter(contents, accounts, accountFilter),
@@ -150,17 +149,12 @@ export function PerformanceTab({ accounts, contents, insights, accountFilter }: 
         <div>
           <h2>성과</h2>
           <p>계정 필터 기준으로 콘텐츠와 성과 기록의 현재 상태를 확인합니다.</p>
-          {apiImportMessage && <p className="api-result-message">{apiImportMessage}</p>}
+          <p className="api-result-message">
+            API 성과는 계정 등록/설정 탭에서 게시물 인사이트를 조회한 뒤 저장하면 이곳에 반영됩니다.
+          </p>
         </div>
         <div className="header-actions">
           <span className="badge">{scopedInsights.length}개 성과 기록</span>
-          <button
-            className="primary-button"
-            type="button"
-            onClick={() => setApiImportMessage("실제 API 성과 불러오기는 8단계에서 구현됩니다.")}
-          >
-            API로 성과 불러오기
-          </button>
         </div>
       </div>
 

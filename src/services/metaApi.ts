@@ -59,7 +59,6 @@ export type ExternalMediaItem = {
 export type NormalizedInsight = Pick<
   InsightRecord,
   | "accountId"
-  | "contentId"
   | "platform"
   | "source"
   | "measuredAt"
@@ -75,7 +74,9 @@ export type NormalizedInsight = Pick<
   | "apiSyncStatus"
   | "lastSyncedAt"
   | "syncErrorMessage"
->;
+> & {
+  externalMediaId: string;
+};
 
 type MetaApiErrorPayload = {
   error?: {
@@ -316,7 +317,7 @@ function createNormalizedInsight(
 
   return {
     accountId: context.account.id,
-    contentId: context.mediaId,
+    externalMediaId: context.mediaId,
     platform: context.account.platform,
     source: "api",
     measuredAt: context.measuredAt,
