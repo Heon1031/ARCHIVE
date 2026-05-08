@@ -19,6 +19,7 @@
 - UX Structure Designer: `30_DESIGN_UX_STRUCTURE.md`
 - UI System Designer: `31_DESIGN_UI_SYSTEM.md`
 - Content Strategy / Growth Marketer: `40_MARKETER_CONTENT_STRATEGY.md`
+- Content Manager Agent: `41_CONTENT_MANAGER_AGENT.md`
 - QA Review Mode: `50_QA_REVIEW.md`
 
 ## 읽기 원칙

@@ -1,9 +1,10 @@
 import { useMemo, useState, type FormEvent } from "react";
-import type { Account, AccountFilterValue, ContentItem, ContentStatus, Platform } from "../types/models";
+import type { Account, AccountFilterValue, ContentItem, ContentStatus, InsightRecord, Platform } from "../types/models";
 
 type MainTabProps = {
   accounts: Account[];
   contents: ContentItem[];
+  insights: InsightRecord[];
   accountFilter: AccountFilterValue;
   onContentsChange: (contents: ContentItem[]) => void;
   onOpenAccountSettings: () => void;
@@ -61,14 +62,16 @@ const statusLabels: Record<ContentStatus, string> = {
 };
 
 const formatLabels: Record<NonNullable<ContentItem["format"]>, string> = {
-  post: "Post",
-  reel: "Reel",
-  thread: "Thread",
-  carousel: "Carousel",
-  story: "Story",
-  article: "Article",
-  other: "Other",
+  post: "이미지/일반 게시물",
+  reel: "릴스/영상",
+  thread: "Threads",
+  carousel: "캐러셀",
+  story: "스토리",
+  article: "긴 글/에세이",
+  other: "기타",
 };
+
+const defaultTopics = ["가족", "결혼/관계", "일상", "성장", "위로", "창작", "회고", "공지", "기타"];
 
 function createId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -141,9 +144,76 @@ function applyAccountFilter(
   });
 }
 
+function getContentDate(content: ContentItem) {
+  return content.publishedDate ?? content.plannedDate ?? "";
+}
+
+function getContentKeywords(content: ContentItem) {
+  if (content.topicKeywords && content.topicKeywords.length > 0) {
+    return content.topicKeywords.slice(0, 5);
+  }
+
+  const sourceText = [
+    content.title,
+    content.topic,
+    content.caption,
+    content.text,
+    content.draftMemo,
+    content.retrospective,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const matches = sourceText.match(/[가-힣A-Za-z0-9#]{2,}/g) ?? [];
+  const stopWords = new Set(["그리고", "그래서", "오늘", "이번", "있는", "없는", "것을", "것도"]);
+
+  return Array.from(
+    new Set(
+      matches
+        .map((keyword) => keyword.replace(/^#/, ""))
+        .filter((keyword) => keyword.length >= 2 && !stopWords.has(keyword)),
+    ),
+  ).slice(0, 5);
+}
+
+function getTopValue(values: string[]) {
+  if (values.length === 0) {
+    return "없음";
+  }
+
+  const counts = values.reduce<Record<string, number>>((accumulator, value) => {
+    accumulator[value] = (accumulator[value] ?? 0) + 1;
+    return accumulator;
+  }, {});
+
+  return Object.entries(counts).sort((first, second) => second[1] - first[1])[0]?.[0] ?? "없음";
+}
+
+function getRecentKeywords(contents: ContentItem[]) {
+  return Array.from(new Set(contents.flatMap(getContentKeywords))).slice(0, 8);
+}
+
+function getRecommendations(missingTopic: string, leastUsedFormat: string, keywords: string[]) {
+  const recommendations = [
+    `${missingTopic} 주제로 짧게 기록할 장면을 하나 골라보세요.`,
+    `${leastUsedFormat} 형식으로 최근 이야기를 다시 풀어보세요.`,
+    keywords.length > 0
+      ? `"${keywords[0]}" 키워드를 다른 각도에서 이어가 보세요.`
+      : "최근 한 달을 돌아보는 회고형 글감을 준비해보세요.",
+  ];
+
+  return recommendations.slice(0, 3);
+}
+
+function hasInsightRecord(content: ContentItem, insights: InsightRecord[]) {
+  return insights.some(
+    (insight) => insight.contentId === content.id && insight.accountId === content.accountId,
+  );
+}
+
 export function MainTab({
   accounts,
   contents,
+  insights,
   accountFilter,
   onContentsChange,
   onOpenAccountSettings,
@@ -162,6 +232,25 @@ export function MainTab({
   );
   const visibleMonthKey = getMonthKey(visibleMonth);
   const calendarDays = useMemo(() => getMonthDays(visibleMonth), [visibleMonth]);
+  const monthContents = filteredContents.filter((content) =>
+    getContentDate(content).startsWith(visibleMonthKey),
+  );
+  const publishedThisMonthCount = monthContents.filter((content) => content.status === "published").length;
+  const topTopic = getTopValue(monthContents.map((content) => content.topic ?? "기타"));
+  const topFormat = getTopValue(monthContents.map((content) => formatLabels[content.format ?? "other"]));
+  const missingTopic =
+    defaultTopics.find((topic) => !monthContents.some((content) => (content.topic ?? "기타") === topic)) ??
+    "기타";
+  const formatUsage = Object.keys(formatLabels).map((format) => ({
+    format: format as NonNullable<ContentItem["format"]>,
+    count: monthContents.filter((content) => (content.format ?? "other") === format).length,
+  }));
+  const leastUsedFormat =
+    formatLabels[
+      formatUsage.sort((first, second) => first.count - second.count)[0]?.format ?? "other"
+    ];
+  const recentKeywords = getRecentKeywords(monthContents);
+  const recommendations = getRecommendations(missingTopic, leastUsedFormat, recentKeywords);
   const todayKey = getDateKey(new Date());
   const todayItems = filteredContents.filter((content) => content.plannedDate === todayKey);
   const reminderItems = filteredContents.filter((content) => content.reminderMemo);
@@ -286,7 +375,49 @@ export function MainTab({
       </div>
 
       <div className="section-grid">
-        <article className="panel-card panel-card--wide">
+        <article className="panel-card panel-card--wide flow-summary-card">
+          <div className="card-heading">
+            <div>
+              <h3>이번 달 콘텐츠 흐름</h3>
+              <p>API로 가져온 게시물과 직접 등록한 콘텐츠를 함께 봅니다.</p>
+            </div>
+            <span className="badge">{formatMonthLabel(visibleMonth)}</span>
+          </div>
+          <div className="home-summary-grid">
+            <div className="home-summary-item">
+              <span>게시 완료</span>
+              <strong>{publishedThisMonthCount}</strong>
+            </div>
+            <div className="home-summary-item">
+              <span>많이 쓴 주제</span>
+              <strong>{topTopic}</strong>
+            </div>
+            <div className="home-summary-item">
+              <span>많이 쓴 형식</span>
+              <strong>{topFormat}</strong>
+            </div>
+            <div className="home-summary-item">
+              <span>부족한 주제</span>
+              <strong>{missingTopic}</strong>
+            </div>
+          </div>
+          <div className="keyword-row">
+            <span>최근 키워드</span>
+            {recentKeywords.length > 0 ? (
+              recentKeywords.map((keyword) => <b key={keyword}>{keyword}</b>)
+            ) : (
+              <b>키워드 없음</b>
+            )}
+          </div>
+          <div className="recommendation-list">
+            {recommendations.map((recommendation) => (
+              <p key={recommendation}>{recommendation}</p>
+            ))}
+          </div>
+        </article>
+
+        <details className="panel-card panel-card--wide content-editor-card" open={Boolean(editingContentId)}>
+          <summary>{editingContentId ? "콘텐츠 수정" : "콘텐츠 직접 추가"}</summary>
           <div className="card-heading">
             <div>
               <h3>{editingContentId ? "콘텐츠 수정" : "콘텐츠 추가"}</h3>
@@ -446,7 +577,7 @@ export function MainTab({
               </button>
             </div>
           </form>
-        </article>
+        </details>
 
         <article className="panel-card">
           <h3>오늘 할 일</h3>
@@ -474,7 +605,7 @@ export function MainTab({
           )}
         </article>
 
-        <article className="panel-card panel-card--wide">
+        <article className="panel-card panel-card--wide calendar-home-card">
           <div className="card-heading">
             <h3>월간 콘텐츠 캘린더</h3>
             <div className="month-controls">
@@ -515,7 +646,8 @@ export function MainTab({
                       <strong>{content.title}</strong>
                       <small>
                         {accountMap.get(content.accountId)?.displayName ?? "계정 없음"} ·{" "}
-                        {statusLabels[content.status]}
+                        {statusLabels[content.status]} · {formatLabels[content.format ?? "other"]} ·{" "}
+                        {content.topic ?? "기타"}
                       </small>
                     </button>
                   ))}
@@ -529,6 +661,53 @@ export function MainTab({
         </article>
 
         <article className="panel-card panel-card--wide">
+          <h3>콘텐츠 DB</h3>
+          {filteredContents.length === 0 ? (
+            <p>선택한 필터에 해당하는 게시물 기록이 없습니다.</p>
+          ) : (
+            <div className="content-db-table">
+              <div className="content-db-row content-db-row--head">
+                <span>게시일</span>
+                <span>플랫폼</span>
+                <span>계정</span>
+                <span>제목</span>
+                <span>형식</span>
+                <span>주제</span>
+                <span>키워드</span>
+                <span>상태</span>
+                <span>성과</span>
+                <span>링크</span>
+              </div>
+              {filteredContents.map((content) => (
+                <div className="content-db-row" key={content.id}>
+                  <span>{getContentDate(content) || "-"}</span>
+                  <span>{platformLabels[content.platform]}</span>
+                  <span>{accountMap.get(content.accountId)?.displayName ?? "-"}</span>
+                  <strong>{content.title}</strong>
+                  <span>{formatLabels[content.format ?? "other"]}</span>
+                  <span>{content.topic ?? "기타"}</span>
+                  <span>{getContentKeywords(content).join(", ") || "키워드 없음"}</span>
+                  <span>{statusLabels[content.status]}</span>
+                  <span>{hasInsightRecord(content, insights) ? "있음" : "없음"}</span>
+                  <div className="account-card__actions">
+                    {content.externalPermalink ? (
+                      <a href={content.externalPermalink} target="_blank" rel="noreferrer">
+                        열기
+                      </a>
+                    ) : (
+                      <span>-</span>
+                    )}
+                    <button className="secondary-button" type="button" onClick={() => handleEdit(content)}>
+                      수정
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </article>
+
+        <article className="panel-card panel-card--wide legacy-content-list">
           <h3>콘텐츠 기획 목록</h3>
           {filteredContents.length === 0 ? (
             <p>선택된 필터에 해당하는 콘텐츠가 없습니다.</p>

@@ -45,6 +45,7 @@ function App() {
         <MainTab
           accounts={filterAccounts}
           contents={contents}
+          insights={insights}
           accountFilter={accountFilter}
           onContentsChange={setContents}
           onOpenAccountSettings={() => setActiveTab("accountSettings")}
@@ -64,6 +65,7 @@ function App() {
           contents={contents}
           insights={insights}
           onAccountsChange={setAccounts}
+          onContentsChange={setContents}
           onInsightsChange={setInsights}
         />
       )}

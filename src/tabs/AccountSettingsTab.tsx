@@ -13,6 +13,7 @@ type AccountSettingsTabProps = {
   contents: ContentItem[];
   insights: InsightRecord[];
   onAccountsChange: (accounts: Account[]) => void;
+  onContentsChange: (contents: ContentItem[]) => void;
   onInsightsChange: (insights: InsightRecord[]) => void;
 };
 
@@ -123,8 +124,119 @@ function getMediaPreview(media: ExternalMediaItem) {
   return previewText.length > 80 ? `${previewText.slice(0, 80)}...` : previewText;
 }
 
+function getContentTitleFromMedia(media: ExternalMediaItem) {
+  const sourceText = (media.caption ?? media.text ?? "").trim();
+
+  if (!sourceText) {
+    return "제목 없는 게시물";
+  }
+
+  return sourceText.length > 36 ? `${sourceText.slice(0, 36)}...` : sourceText;
+}
+
+function getPublishedDate(media: ExternalMediaItem) {
+  if (!media.publishedAt) {
+    return undefined;
+  }
+
+  const parsedDate = new Date(media.publishedAt);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return media.publishedAt.slice(0, 10);
+  }
+
+  return parsedDate.toISOString().slice(0, 10);
+}
+
+function inferFormatFromMedia(account: Account, media: ExternalMediaItem): NonNullable<ContentItem["format"]> {
+  const mediaType = media.mediaType?.toUpperCase();
+
+  if (account.platform === "threads") {
+    return "thread";
+  }
+
+  if (mediaType === "CAROUSEL_ALBUM") {
+    return "carousel";
+  }
+
+  if (mediaType === "VIDEO" || mediaType === "REELS") {
+    return "reel";
+  }
+
+  if (mediaType === "IMAGE") {
+    return "post";
+  }
+
+  return "other";
+}
+
+function inferTopicFromText(media: ExternalMediaItem) {
+  const sourceText = `${media.caption ?? ""} ${media.text ?? ""}`.toLowerCase();
+  const topicRules: Array<{ topic: string; keywords: string[] }> = [
+    { topic: "가족", keywords: ["가족", "아이", "엄마", "아빠", "부모"] },
+    { topic: "결혼/관계", keywords: ["결혼", "관계", "부부", "사랑"] },
+    { topic: "일상", keywords: ["일상", "오늘", "하루", "주말"] },
+    { topic: "성장", keywords: ["성장", "배움", "습관", "도전"] },
+    { topic: "위로", keywords: ["위로", "괜찮", "힘들", "마음"] },
+    { topic: "창작", keywords: ["창작", "글", "콘텐츠", "작업"] },
+    { topic: "회고", keywords: ["회고", "기록", "돌아보", "느낀"] },
+    { topic: "공지", keywords: ["공지", "안내", "소식", "모집"] },
+  ];
+
+  return topicRules.find((rule) => rule.keywords.some((keyword) => sourceText.includes(keyword)))?.topic ?? "기타";
+}
+
+function extractTopicKeywords(media: ExternalMediaItem) {
+  const sourceText = `${media.caption ?? ""} ${media.text ?? ""}`;
+  const matches = sourceText.match(/[가-힣A-Za-z0-9#]{2,}/g) ?? [];
+  return Array.from(new Set(matches.map((keyword) => keyword.replace(/^#/, "")).filter(Boolean))).slice(0, 8);
+}
+
+function getExternalMediaId(media: ExternalMediaItem) {
+  const externalMediaId = media.externalMediaId.trim();
+
+  if (externalMediaId) {
+    return externalMediaId;
+  }
+
+  const fallbackId = media.id.trim();
+  return fallbackId || undefined;
+}
+
+function openPermalink(permalink?: string) {
+  const targetUrl = permalink?.trim();
+
+  if (!targetUrl) {
+    return;
+  }
+
+  window.open(targetUrl, "_blank", "noopener,noreferrer");
+}
+
 function formatInsightValue(value?: number) {
   return typeof value === "number" ? value.toLocaleString() : "-";
+}
+
+function hasInsightMetric(insight: NormalizedInsight) {
+  return [
+    insight.reach,
+    insight.views,
+    insight.likes,
+    insight.comments,
+    insight.saves,
+    insight.shares,
+    insight.replies,
+    insight.reposts,
+    insight.quotes,
+  ].some((value) => typeof value === "number");
+}
+
+function getMetricNamesLabel(metricNames?: string[]) {
+  if (!metricNames || metricNames.length === 0) {
+    return "없음";
+  }
+
+  return metricNames.join(", ");
 }
 
 function getContentOptionLabel(content: ContentItem) {
@@ -135,6 +247,67 @@ function findMatchedContent(contents: ContentItem[], accountId: string, mediaId:
   return contents.find(
     (content) => content.accountId === accountId && content.externalMediaId === mediaId,
   );
+}
+
+function upsertContentsFromMedia(
+  contents: ContentItem[],
+  account: Account,
+  mediaItems: ExternalMediaItem[],
+) {
+  const now = new Date().toISOString();
+  let createdCount = 0;
+  let updatedCount = 0;
+  const nextContents = [...contents];
+
+  mediaItems.forEach((media) => {
+    const externalMediaId = getExternalMediaId(media);
+
+    if (!externalMediaId) {
+      return;
+    }
+
+    const publishedDate = getPublishedDate(media);
+    const existingIndex = nextContents.findIndex(
+      (content) => content.accountId === account.id && content.externalMediaId === externalMediaId,
+    );
+    const mediaPayload = {
+      accountId: account.id,
+      platform: account.platform,
+      title: getContentTitleFromMedia(media),
+      format: inferFormatFromMedia(account, media),
+      contentType: inferFormatFromMedia(account, media),
+      topic: inferTopicFromText(media),
+      caption: media.caption,
+      text: media.text,
+      topicKeywords: extractTopicKeywords(media),
+      status: "published" as const,
+      plannedDate: publishedDate,
+      publishedDate,
+      externalMediaId,
+      externalPermalink: media.permalink,
+      source: "api" as const,
+      updatedAt: now,
+    };
+
+    if (existingIndex >= 0) {
+      nextContents[existingIndex] = {
+        ...nextContents[existingIndex],
+        ...mediaPayload,
+        createdAt: nextContents[existingIndex].createdAt,
+      };
+      updatedCount += 1;
+      return;
+    }
+
+    nextContents.push({
+      id: createId(),
+      ...mediaPayload,
+      createdAt: now,
+    });
+    createdCount += 1;
+  });
+
+  return { nextContents, createdCount, updatedCount };
 }
 
 function toInsightRecord(
@@ -236,6 +409,7 @@ export function AccountSettingsTab({
   contents,
   insights,
   onAccountsChange,
+  onContentsChange,
   onInsightsChange,
 }: AccountSettingsTabProps) {
   const [form, setForm] = useState<AccountFormState>(emptyForm);
@@ -350,6 +524,22 @@ export function AccountSettingsTab({
     );
   }
 
+  function handleDeleteAccount(account: Account) {
+    const shouldDelete = window.confirm(
+      `${account.displayName} 계정을 삭제할까요? 연결된 콘텐츠/성과 기록은 남을 수 있습니다.`,
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    onAccountsChange(accounts.filter((currentAccount) => currentAccount.id !== account.id));
+
+    if (editingAccountId === account.id) {
+      resetForm();
+    }
+  }
+
   async function handleCheckConnection(account: Account) {
     const result = await checkConnection(account);
     const checkedAt = result.checkedAt ?? new Date().toISOString();
@@ -383,6 +573,31 @@ export function AccountSettingsTab({
     const result = await fetchRecentMedia(account);
 
     if (Array.isArray(result)) {
+      const { nextContents, createdCount, updatedCount } = upsertContentsFromMedia(
+        contents,
+        account,
+        result,
+      );
+      const nextSelections = result.reduce<Record<string, string>>((selections, media) => {
+        const mediaId = getExternalMediaId(media);
+        const matchedContent = mediaId
+          ? nextContents.find(
+              (content) => content.accountId === account.id && content.externalMediaId === mediaId,
+            )
+          : undefined;
+
+        if (mediaId && matchedContent) {
+          selections[mediaId] = matchedContent.id;
+        }
+
+        return selections;
+      }, {});
+
+      onContentsChange(nextContents);
+      setSelectedContentByMediaId((currentSelections) => ({
+        ...currentSelections,
+        ...nextSelections,
+      }));
       setRecentMediaByAccountId((currentMedia) => ({
         ...currentMedia,
         [account.id]: result,
@@ -393,7 +608,10 @@ export function AccountSettingsTab({
       }));
       setRecentMediaMessageByAccountId((currentMessages) => ({
         ...currentMessages,
-        [account.id]: result.length > 0 ? "최근 게시물을 불러왔습니다." : "최근 게시물이 없습니다.",
+        [account.id]:
+          result.length > 0
+            ? `최근 게시물을 콘텐츠 캘린더에 반영했습니다. 새 콘텐츠 ${createdCount}개, 업데이트 ${updatedCount}개`
+            : "최근 게시물이 없습니다.",
       }));
       return;
     }
@@ -412,45 +630,97 @@ export function AccountSettingsTab({
     }));
   }
 
-  async function handleFetchMediaInsights(account: Account, mediaId: string) {
-    const result = await fetchMediaInsights(account, mediaId);
+  async function handleFetchMediaInsights(
+    account: Account,
+    mediaId: string,
+    messageKey = mediaId,
+    mediaType?: string,
+  ) {
+    const externalMediaId = mediaId.trim();
+    const targetMessageKey = messageKey.trim() || "unknown";
 
-    if ("ok" in result) {
+    if (!externalMediaId) {
       setInsightMessageByMediaId((currentMessages) => ({
         ...currentMessages,
-        [mediaId]: result.message,
+        [targetMessageKey]: "게시물 ID를 확인할 수 없습니다. 최근 게시물 목록을 다시 불러오세요.",
       }));
       setInsightFailureByMediaId((currentFailures) => ({
         ...currentFailures,
-        [mediaId]: true,
+        [targetMessageKey]: true,
+      }));
+      return;
+    }
+
+    setInsightMessageByMediaId((currentMessages) => ({
+      ...currentMessages,
+      [targetMessageKey]: `인사이트를 요청했습니다. 사용한 게시물 ID: ${externalMediaId}`,
+    }));
+
+    const result = await fetchMediaInsights(account, externalMediaId, mediaType);
+
+    if ("ok" in result) {
+      const isInstagramMetricError =
+        result.errorType === "IGApiException" && result.errorCode === 100;
+      const detailParts = [
+        `요청한 mediaId: ${result.requestedMediaId ?? externalMediaId}`,
+        result.requestedMetrics?.length ? `요청 metric: ${result.requestedMetrics.join(", ")}` : undefined,
+        result.httpStatus ? `httpStatus: ${result.httpStatus}` : undefined,
+        result.errorType ? `errorType: ${result.errorType}` : undefined,
+        typeof result.errorCode === "number" ? `errorCode: ${result.errorCode}` : undefined,
+        typeof result.errorSubcode === "number" ? `errorSubcode: ${result.errorSubcode}` : undefined,
+      ].filter(Boolean);
+
+      setInsightMessageByMediaId((currentMessages) => ({
+        ...currentMessages,
+        [targetMessageKey]: `API 요청 실패: ${
+          isInstagramMetricError
+            ? "현재 게시물 형식에서 요청 metric이 지원되지 않거나 권한이 부족할 수 있습니다."
+            : result.message
+        } ${detailParts.join(" · ")}`,
+      }));
+      setInsightFailureByMediaId((currentFailures) => ({
+        ...currentFailures,
+        [targetMessageKey]: true,
       }));
       return;
     }
 
     setInsightsByMediaId((currentInsights) => ({
       ...currentInsights,
-      [mediaId]: result,
+      [externalMediaId]: result,
     }));
     setInsightFailureByMediaId((currentFailures) => ({
       ...currentFailures,
-      [mediaId]: false,
+      [targetMessageKey]: false,
     }));
     setInsightMessageByMediaId((currentMessages) => ({
       ...currentMessages,
-      [mediaId]: "인사이트를 불러왔습니다.",
+      [targetMessageKey]: hasInsightMetric(result)
+        ? `정상 수치 반환: 인사이트를 불러왔습니다. 사용한 게시물 ID: ${externalMediaId}`
+        : `metric 없음: API 응답은 성공했지만 지원되는 인사이트 지표를 찾지 못했습니다. metric 이름 또는 권한을 Meta 공식 문서 기준으로 확인해야 합니다. 사용한 게시물 ID: ${externalMediaId}`,
     }));
   }
 
   function handleSaveInsight(account: Account, media: ExternalMediaItem) {
-    const insight = insightsByMediaId[media.externalMediaId];
-    const matchedContent = findMatchedContent(contents, account.id, media.externalMediaId);
+    const externalMediaId = getExternalMediaId(media);
+
+    if (!externalMediaId) {
+      setSaveInsightMessageByMediaId((currentMessages) => ({
+        ...currentMessages,
+        [media.id]: "게시물 ID를 확인할 수 없어 저장할 수 없습니다. 최근 게시물 목록을 다시 불러오세요.",
+      }));
+      return;
+    }
+
+    const insight = insightsByMediaId[externalMediaId];
+    const matchedContent = findMatchedContent(contents, account.id, externalMediaId);
     const selectedContentId =
-      selectedContentByMediaId[media.externalMediaId] ?? matchedContent?.id ?? "";
+      selectedContentByMediaId[externalMediaId] ?? matchedContent?.id ?? "";
 
     if (!insight || !selectedContentId) {
       setSaveInsightMessageByMediaId((currentMessages) => ({
         ...currentMessages,
-        [media.externalMediaId]: "연결할 콘텐츠를 선택해야 저장할 수 있습니다.",
+        [externalMediaId]: "연결할 콘텐츠를 선택해야 저장할 수 있습니다.",
       }));
       return;
     }
@@ -472,7 +742,7 @@ export function AccountSettingsTab({
     onInsightsChange(nextInsights);
     setSaveInsightMessageByMediaId((currentMessages) => ({
       ...currentMessages,
-      [media.externalMediaId]: "성과 탭에 저장했습니다.",
+      [externalMediaId]: "성과 탭에 저장했습니다.",
     }));
   }
 
@@ -770,7 +1040,7 @@ export function AccountSettingsTab({
                     </div>
                   </div>
                   <details className="api-detail-panel">
-                    <summary>게시물/성과 관리 펼치기</summary>
+                    <summary>게시물 동기화와 보조 성과 관리</summary>
                     <div className="account-card__actions">
                       <button
                         className="primary-button"
@@ -784,7 +1054,7 @@ export function AccountSettingsTab({
                         type="button"
                         onClick={() => void handleFetchRecentMedia(account)}
                       >
-                        최근 게시물 확인
+                        게시물 가져오기
                       </button>
                     </div>
                     {apiCheckMessageByAccountId[account.id] && (
@@ -799,48 +1069,63 @@ export function AccountSettingsTab({
                     {recentMediaByAccountId[account.id]?.length > 0 && (
                       <div className="compact-list">
                         {recentMediaByAccountId[account.id].map((media) => {
+                          const mediaId = getExternalMediaId(media);
+                          const mediaKey = mediaId ?? media.id;
+                          const permalink = media.permalink?.trim();
                           const accountContents = contents.filter((content) => content.accountId === account.id);
-                          const matchedContent = findMatchedContent(contents, account.id, media.externalMediaId);
+                          const matchedContent = mediaId ? findMatchedContent(contents, account.id, mediaId) : undefined;
                           const selectedContentId =
-                            selectedContentByMediaId[media.externalMediaId] ?? matchedContent?.id ?? "";
+                            (mediaId ? selectedContentByMediaId[mediaId] : undefined) ?? matchedContent?.id ?? "";
 
                           return (
-                          <div className="content-row" key={media.id}>
+                          <div className="content-row" key={mediaKey}>
                             <div className="content-summary">
                               <div>
-                                <strong>{media.externalMediaId}</strong>
+                                <strong>{mediaId ?? "게시물 ID 없음"}</strong>
                                 <p>
                                   {media.publishedAt ?? "게시일 없음"} · {media.mediaType ?? "유형 없음"}
                                 </p>
+                                <small>
+                                  externalMediaId: {media.externalMediaId || "없음"} · id: {media.id || "없음"}
+                                </small>
+                                <small>permalink: {permalink ? "있음" : "없음"}</small>
                                 <p>{getMediaPreview(media)}</p>
-                                {insightMessageByMediaId[media.externalMediaId] && (
-                                  <p>{insightMessageByMediaId[media.externalMediaId]}</p>
+                                {insightMessageByMediaId[mediaKey] && (
+                                  <p>{insightMessageByMediaId[mediaKey]}</p>
                                 )}
-                                {insightFailureByMediaId[media.externalMediaId] &&
+                                {mediaId && insightsByMediaId[mediaId] && (
+                                  <small>
+                                    요청 mediaId: {insightsByMediaId[mediaId].debug.requestedMediaId} · 응답 성공: 예 ·
+                                    httpStatus: {insightsByMediaId[mediaId].debug.httpStatus} · 요청 metric:{" "}
+                                    {getMetricNamesLabel(insightsByMediaId[mediaId].debug.requestedMetrics)} · 반환 metric:{" "}
+                                    {getMetricNamesLabel(insightsByMediaId[mediaId].debug.metricNames)}
+                                  </small>
+                                )}
+                                {insightFailureByMediaId[mediaKey] &&
                                   renderManualInsightForm(
                                     account,
-                                    `media:${media.externalMediaId}`,
+                                    `media:${mediaKey}`,
                                     selectedContentId,
                                   )}
-                                {insightsByMediaId[media.externalMediaId] && (
+                                {mediaId && insightsByMediaId[mediaId] && (
                                   <div className="performance-metrics">
-                                    <span>도달 {formatInsightValue(insightsByMediaId[media.externalMediaId].reach)}</span>
-                                    <span>조회수 {formatInsightValue(insightsByMediaId[media.externalMediaId].views)}</span>
-                                    <span>좋아요 {formatInsightValue(insightsByMediaId[media.externalMediaId].likes)}</span>
+                                    <span>도달 {formatInsightValue(insightsByMediaId[mediaId].reach)}</span>
+                                    <span>조회수 {formatInsightValue(insightsByMediaId[mediaId].views)}</span>
+                                    <span>좋아요 {formatInsightValue(insightsByMediaId[mediaId].likes)}</span>
                                     <span>
                                       댓글/답글{" "}
                                       {formatInsightValue(
-                                        insightsByMediaId[media.externalMediaId].comments ??
-                                          insightsByMediaId[media.externalMediaId].replies,
+                                        insightsByMediaId[mediaId].comments ??
+                                          insightsByMediaId[mediaId].replies,
                                       )}
                                     </span>
-                                    <span>저장 {formatInsightValue(insightsByMediaId[media.externalMediaId].saves)}</span>
-                                    <span>공유 {formatInsightValue(insightsByMediaId[media.externalMediaId].shares)}</span>
-                                    <span>리포스트 {formatInsightValue(insightsByMediaId[media.externalMediaId].reposts)}</span>
-                                    <span>인용 {formatInsightValue(insightsByMediaId[media.externalMediaId].quotes)}</span>
+                                    <span>저장 {formatInsightValue(insightsByMediaId[mediaId].saves)}</span>
+                                    <span>공유 {formatInsightValue(insightsByMediaId[mediaId].shares)}</span>
+                                    <span>리포스트 {formatInsightValue(insightsByMediaId[mediaId].reposts)}</span>
+                                    <span>인용 {formatInsightValue(insightsByMediaId[mediaId].quotes)}</span>
                                   </div>
                                 )}
-                                {insightsByMediaId[media.externalMediaId] && (
+                                {mediaId && insightsByMediaId[mediaId] && (
                                   <div className="placeholder-form">
                                     <label className="form-field">
                                       <span>성과를 연결할 콘텐츠</span>
@@ -849,7 +1134,7 @@ export function AccountSettingsTab({
                                         onChange={(event) =>
                                           setSelectedContentByMediaId((currentSelections) => ({
                                             ...currentSelections,
-                                            [media.externalMediaId]: event.target.value,
+                                            [mediaId]: event.target.value,
                                           }))
                                         }
                                       >
@@ -862,8 +1147,8 @@ export function AccountSettingsTab({
                                         ))}
                                       </select>
                                     </label>
-                                    {saveInsightMessageByMediaId[media.externalMediaId] && (
-                                      <p>{saveInsightMessageByMediaId[media.externalMediaId]}</p>
+                                    {saveInsightMessageByMediaId[mediaId] && (
+                                      <p>{saveInsightMessageByMediaId[mediaId]}</p>
                                     )}
                                   </div>
                                 )}
@@ -872,16 +1157,26 @@ export function AccountSettingsTab({
                             <button
                               className="secondary-button"
                               type="button"
-                              onClick={() => void handleFetchMediaInsights(account, media.externalMediaId)}
+                              onClick={() =>
+                                void handleFetchMediaInsights(account, mediaId ?? "", mediaKey, media.mediaType)
+                              }
                             >
                               인사이트 확인
                             </button>
-                            {media.permalink && (
-                              <a className="secondary-button" href={media.permalink} target="_blank" rel="noreferrer">
+                            {permalink ? (
+                              <button
+                                className="secondary-button"
+                                type="button"
+                                onClick={() => openPermalink(permalink)}
+                              >
                                 링크 열기
-                              </a>
+                              </button>
+                            ) : (
+                              <button className="secondary-button" type="button" disabled>
+                                링크 없음
+                              </button>
                             )}
-                            {insightsByMediaId[media.externalMediaId] && (
+                            {mediaId && insightsByMediaId[mediaId] && (
                               <button
                                 className="secondary-button"
                                 type="button"
@@ -906,6 +1201,13 @@ export function AccountSettingsTab({
                       onClick={() => handleToggleActive(account.id)}
                     >
                       {account.isActive ? "비활성화" : "활성화"}
+                    </button>
+                    <button
+                      className="danger-button"
+                      type="button"
+                      onClick={() => handleDeleteAccount(account)}
+                    >
+                      삭제
                     </button>
                   </div>
                 </div>

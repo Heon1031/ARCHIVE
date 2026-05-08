@@ -65,3 +65,11 @@ type ApiSyncError = {
 - UI는 원본 API 응답 필드에 직접 의존하지 않는다.
 - UI는 정규화된 `Account`, `ExternalMediaItem`, `NormalizedInsight`, `InsightRecord`만 사용한다.
 - API별 필드 차이는 API 연동 계층에서 흡수한다.
+## 게시물 정규화와 ContentItem 연결 방향
+
+- 최근 게시물 API 응답은 먼저 `ExternalMediaItem`으로 정규화한다.
+- 이후 `externalMediaId`를 기준으로 기존 `ContentItem`을 찾고, 없으면 업로드 완료 `ContentItem`을 자동 생성하는 방향을 기본으로 한다.
+- `caption` 또는 `text`는 키워드 추출, 주제 분류, 콘텐츠 종류 분류의 입력값으로 사용할 수 있다.
+- 초기 분류는 규칙 기반과 수동 보정으로 시작하고, 이후 AI 분류로 확장할 수 있다.
+- `NormalizedInsight`와 `InsightRecord`는 성과 데이터만 다루며, 콘텐츠 본문/주제 관리의 중심은 `ContentItem`이다.
+

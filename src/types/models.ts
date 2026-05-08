@@ -48,6 +48,10 @@ export type ContentItem = {
   title: string;
   format?: "post" | "reel" | "thread" | "carousel" | "story" | "article" | "other";
   topic?: string;
+  contentType?: string;
+  caption?: string;
+  text?: string;
+  topicKeywords?: string[];
   status: ContentStatus;
   plannedDate?: string;
   publishedDate?: string;
