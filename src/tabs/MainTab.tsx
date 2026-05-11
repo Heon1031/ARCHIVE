@@ -34,6 +34,12 @@ type DateRecommendation = {
   type: "추천" | "개선" | "재활용" | "휴식";
   title: string;
   reason: string;
+  topic: string;
+  format: string;
+  basis: string;
+  expectedEffect: string;
+  caution: string;
+  tags: string[];
 };
 
 const emptyForm: ContentFormState = {
@@ -249,6 +255,12 @@ function getDateRecommendation(
       reason: previousPostGap === 1
         ? "전날 실제 게시물이 있어 바로 이어 올리기보다 반응을 지켜보는 편이 좋습니다."
         : "주말에는 새 게시보다 다음 주 긴 글을 준비하는 편이 흐름을 만들기 좋습니다.",
+      topic: "휴식",
+      format: "리듬조정",
+      basis: previousPostGap === 1 ? "직전 업로드 다음날" : "주간 휴식일",
+      expectedEffect: "반복 업로드 피로를 줄이고 다음 게시물의 집중도를 높입니다.",
+      caution: "쉬는 날에도 성과 흐름만 확인하고 새 작성 흐름은 만들지 않습니다.",
+      tags: ["휴식", "리듬조정"],
     };
   }
 
@@ -257,6 +269,12 @@ function getDateRecommendation(
       type: "추천",
       title: `추천-${leastUsedFormat}`,
       reason: `최근 ${previousPostGap}일간 빈틈이 있어 ${missingTopic} 주제를 ${leastUsedFormat} 형식으로 가볍게 이어가기 좋습니다.`,
+      topic: missingTopic,
+      format: leastUsedFormat,
+      basis: `최근 ${previousPostGap}일 공백`,
+      expectedEffect: "게시 리듬을 끊지 않고 부족한 주제 비중을 보완합니다.",
+      caution: "반복되는 주제라면 다른 감정 키워드로 각도를 바꿔야 합니다.",
+      tags: [`추천-${leastUsedFormat}`, "주제전환"].slice(0, 5),
     };
   }
 
@@ -265,6 +283,12 @@ function getDateRecommendation(
       type: "개선",
       title: `개선-${normalizeContentType(lowScoreFormat)}`,
       reason: "성과가 낮았던 형식입니다. 메시지 선명도나 저장을 부르는 구조를 점검해볼 수 있습니다.",
+      topic: lowScoreFormat.topic ?? missingTopic,
+      format: normalizeContentType(lowScoreFormat),
+      basis: "낮은 reactionScore 콘텐츠",
+      expectedEffect: "낮은 반응 형식의 원인을 줄이고 같은 주제의 전달력을 개선합니다.",
+      caution: "같은 형식을 반복하기보다 훅, 문장 길이, 첫 장 구성을 바꿔보세요.",
+      tags: [`개선-${normalizeContentType(lowScoreFormat)}`, "리듬조정"].slice(0, 5),
     };
   }
 
@@ -273,6 +297,12 @@ function getDateRecommendation(
       type: "재활용",
       title: `재활용-${oldHighScoreContent.topic ?? keyword}`,
       reason: "오래전에 반응이 좋았던 게시물을 현재 상황에 맞게 다시 다듬어볼 만합니다.",
+      topic: oldHighScoreContent.topic ?? keyword,
+      format: normalizeContentType(oldHighScoreContent),
+      basis: "30일 이상 지난 고반응 게시물",
+      expectedEffect: "검증된 주제를 새 맥락으로 되살려 반응 가능성을 높입니다.",
+      caution: "문장을 그대로 반복하지 말고 현재 경험이나 계절감을 더하세요.",
+      tags: [`재활용-${oldHighScoreContent.topic ?? keyword}`, "추천-짧은글"].slice(0, 5),
     };
   }
 
@@ -282,6 +312,12 @@ function getDateRecommendation(
     reason: keyword
       ? `${keyword} 키워드를 중심으로 짧고 선명한 운영 흐름을 이어갈 수 있습니다.`
       : "최근 부족했던 주제와 형식을 기준으로 만든 추천입니다.",
+    topic: missingTopic,
+    format: leastUsedFormat,
+    basis: "기본 운영 비율과 최근 월간 흐름",
+    expectedEffect: "부족한 주제와 형식을 보완해 캘린더 균형을 맞춥니다.",
+    caution: "달력 셀을 채우기 위한 추천이 아니라 운영 방향 참고용입니다.",
+    tags: [`추천-${leastUsedFormat}`, `재활용-${missingTopic}`].slice(0, 5),
   };
 }
 
@@ -354,6 +390,7 @@ export function MainTab({
   const [selectedDate, setSelectedDate] = useState(() => getDateKey(new Date()));
   const [selectedContentId, setSelectedContentId] = useState<string | null>(null);
   const [activeJudgement, setActiveJudgement] = useState<JudgementKey>("today");
+  const [selectedDecision, setSelectedDecision] = useState<DateRecommendation | null>(null);
 
   const accountMap = useMemo(
     () => new Map(accounts.map((account) => [account.id, account])),
@@ -414,6 +451,7 @@ export function MainTab({
     selectedDateRecommendation.title,
     selectedDateRecommendation.reason,
   ];
+  const activeDecision = selectedDecision ?? selectedDateRecommendation;
   const restDecision = getRestDecision(monthContents.length);
   const productionCount = filteredContents.filter((content) =>
     ["planned", "in_progress", "review", "scheduled"].includes(content.status),
@@ -435,7 +473,7 @@ export function MainTab({
       summary: todayItems[0]?.title ?? "오늘은 캘린더 흐름만 확인하세요.",
       detail:
         todayItems.length > 0
-          ? "오늘 날짜에 연결된 게시물이 있습니다. 링크와 성과 요약을 확인하고 다음 변주 여부를 판단하세요."
+          ? "오늘 날짜에 연결된 게시물이 있습니다. 게시물 내용과 성과 요약을 확인하고 다음 변주 여부를 판단하세요."
           : "오늘 예정된 게시물이 없습니다. 빈 날짜라면 달력에서 추천/휴식 판단을 확인하면 됩니다.",
     },
     {
@@ -937,6 +975,17 @@ export function MainTab({
                     if (!day.isBlank) {
                       setSelectedDate(day.dateKey);
                       setSelectedContentId(null);
+                      setSelectedDecision(
+                        getDateRecommendation(
+                          day.dateKey,
+                          missingTopic,
+                          leastUsedFormat,
+                          recentKeywords,
+                          oldHighScoreContent,
+                          filteredContents,
+                          insights,
+                        ),
+                      );
                     }
                   }}
                   role={day.isBlank ? undefined : "button"}
@@ -958,11 +1007,12 @@ export function MainTab({
                       <button
                         className={`calendar-recommendation-chip calendar-recommendation-chip--${dayRecommendation.type}`}
                         type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setSelectedDate(day.dateKey);
-                          setSelectedContentId(null);
-                        }}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelectedDate(day.dateKey);
+                        setSelectedContentId(null);
+                        setSelectedDecision(dayRecommendation);
+                      }}
                       >
                         {dayRecommendation.title}
                       </button>
@@ -977,6 +1027,7 @@ export function MainTab({
                         event.stopPropagation();
                         setSelectedDate(getContentDate(content) || day.dateKey);
                         setSelectedContentId(content.id);
+                        setSelectedDecision(null);
                       }}
                     >
                       <span>{platformLabels[content.platform]}</span>
@@ -1073,11 +1124,6 @@ export function MainTab({
                   ))}
                 </div>
                 <div className="account-card__actions">
-                  {selectedContent.externalPermalink && (
-                    <a className="secondary-button" href={selectedContent.externalPermalink} target="_blank" rel="noreferrer">
-                      링크 열기
-                    </a>
-                  )}
                   <button className="secondary-button" type="button" disabled>
                     인사이트 확인
                   </button>
@@ -1089,6 +1135,46 @@ export function MainTab({
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {!selectedContent && (
+            <div className="selected-decision-detail">
+              <span className={`calendar-recommendation-chip calendar-recommendation-chip--${activeDecision.type}`}>
+                {activeDecision.type}
+              </span>
+              <h3>{activeDecision.title}</h3>
+              <p>{activeDecision.reason}</p>
+              <div className="decision-detail-grid">
+                <div>
+                  <span>추천 주제</span>
+                  <strong>{activeDecision.topic}</strong>
+                </div>
+                <div>
+                  <span>추천 형식</span>
+                  <strong>{activeDecision.format}</strong>
+                </div>
+                <div>
+                  <span>기준 데이터</span>
+                  <strong>{activeDecision.basis}</strong>
+                </div>
+                <div>
+                  <span>기대 효과</span>
+                  <strong>{activeDecision.expectedEffect}</strong>
+                </div>
+              </div>
+              <div className="keyword-row">
+                {activeDecision.tags.slice(0, 5).map((tag) => (
+                  <b key={tag}>{tag}</b>
+                ))}
+              </div>
+              <p className="decision-caution">{activeDecision.caution}</p>
+              {oldHighScoreContent && activeDecision.type === "재활용" && (
+                <div className="date-content-card">
+                  <strong>{oldHighScoreContent.title}</strong>
+                  <p>참고할 과거 게시물 · 반응 점수 {getContentScore(oldHighScoreContent, insights)}</p>
+                </div>
+              )}
             </div>
           )}
 

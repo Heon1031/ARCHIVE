@@ -3,13 +3,14 @@ import {
   defaultContentTopics,
   defaultContentTypes,
   defaultManagedKeywords,
+  defaultRecommendationTags,
   defaultStopWords,
   loadTaxonomySettings,
   saveTaxonomySettings,
 } from "../lib/taxonomy";
 import type { TaxonomySettings } from "../types/models";
 
-type DictionaryKey = "managedKeywords" | "contentTopics" | "contentTypes" | "stopWords";
+type DictionaryKey = "managedKeywords" | "contentTopics" | "contentTypes" | "recommendationTags" | "stopWords";
 
 type DictionarySection = {
   key: DictionaryKey;
@@ -36,6 +37,12 @@ const dictionarySections: DictionarySection[] = [
     title: "콘텐츠 형식 사전",
     description: "게시물의 표현 방식과 구조를 구분합니다.",
     placeholder: "예: 문장 카드",
+  },
+  {
+    key: "recommendationTags",
+    title: "추천 태그 사전",
+    description: "달력 운영 판단 배지에 사용할 추천/개선/재활용/휴식 태그입니다.",
+    placeholder: "예: 추천-산문",
   },
   {
     key: "stopWords",
@@ -73,6 +80,7 @@ export function TaxonomyTab() {
     managedKeywords: "",
     contentTopics: "",
     contentTypes: "",
+    recommendationTags: "",
     stopWords: "",
   });
 
@@ -119,6 +127,7 @@ export function TaxonomyTab() {
       managedKeywords: defaultManagedKeywords,
       contentTopics: defaultContentTopics,
       contentTypes: defaultContentTypes,
+      recommendationTags: defaultRecommendationTags,
       stopWords: defaultStopWords,
     });
   }

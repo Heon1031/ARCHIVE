@@ -106,6 +106,7 @@ export type TaxonomySettings = {
   managedKeywords: string[];
   contentTopics: string[];
   contentTypes: string[];
+  recommendationTags: string[];
   stopWords: string[];
   updatedAt?: string;
 };

@@ -108,6 +108,24 @@ export const defaultContentTypes = [
   "기타",
 ];
 
+export const defaultRecommendationTags = [
+  "추천-짧은글",
+  "추천-긴글",
+  "추천-사진+글",
+  "추천-이미지+캡션",
+  "추천-Threads",
+  "개선-캐러셀",
+  "개선-릴스/영상",
+  "개선-이미지+캡션",
+  "재활용-결혼/관계",
+  "재활용-위로",
+  "재활용-성장",
+  "재활용-마음",
+  "휴식",
+  "리듬조정",
+  "주제전환",
+];
+
 export const defaultStopWords = [
   "안녕하세요",
   "오랜만입니다",
@@ -150,6 +168,7 @@ export const defaultTaxonomySettings: TaxonomySettings = {
   managedKeywords: defaultManagedKeywords,
   contentTopics: defaultContentTopics,
   contentTypes: defaultContentTypes,
+  recommendationTags: defaultRecommendationTags,
   stopWords: defaultStopWords,
 };
 
@@ -179,6 +198,7 @@ export function loadTaxonomySettings(): TaxonomySettings {
       managedKeywords: uniqueValues(parsedValue.managedKeywords ?? defaultManagedKeywords),
       contentTopics: uniqueValues(parsedValue.contentTopics ?? defaultContentTopics),
       contentTypes: uniqueValues(parsedValue.contentTypes ?? defaultContentTypes),
+      recommendationTags: uniqueValues(parsedValue.recommendationTags ?? defaultRecommendationTags),
       stopWords: uniqueValues(parsedValue.stopWords ?? defaultStopWords),
       updatedAt: parsedValue.updatedAt,
     };
@@ -205,6 +225,10 @@ export function getActiveContentTopics() {
 
 export function getActiveContentTypes() {
   return loadTaxonomySettings().contentTypes;
+}
+
+export function getActiveRecommendationTags() {
+  return loadTaxonomySettings().recommendationTags;
 }
 
 export function getActiveStopWords() {

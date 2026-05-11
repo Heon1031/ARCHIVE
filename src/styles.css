@@ -2515,3 +2515,203 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* Apple Glass polish */
+:root {
+  --glass-bg: linear-gradient(135deg, #f7f3ff 0%, #ffffff 52%, #f4f0ff 100%);
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-strong: rgba(255, 255, 255, 0.9);
+  --primary: #6d5dfc;
+  --primary-dark: #5042d9;
+  --primary-soft: #ede9ff;
+  --text: #171321;
+  --muted: #746987;
+  --border: rgba(109, 93, 252, 0.12);
+  --soft-shadow: 0 24px 80px rgba(79, 70, 229, 0.12);
+}
+
+body {
+  background: var(--glass-bg);
+  color: var(--text);
+}
+
+.app-shell {
+  background:
+    radial-gradient(circle at 12% 4%, rgba(109, 93, 252, 0.12), transparent 30%),
+    radial-gradient(circle at 88% 10%, rgba(236, 232, 255, 0.9), transparent 28%),
+    var(--glass-bg);
+}
+
+.app-header {
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.58);
+  backdrop-filter: blur(22px);
+}
+
+.panel-card,
+.metric-card,
+.visual-chart-card,
+.taxonomy-content-card,
+.date-content-card,
+.date-recommendation-card,
+.selected-content-detail,
+.selected-decision-detail {
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background: var(--surface);
+  box-shadow: var(--soft-shadow);
+  backdrop-filter: blur(18px);
+}
+
+.panel-card {
+  padding: 22px;
+}
+
+.tab-button,
+.secondary-button,
+.primary-button,
+.danger-button,
+.filter-select,
+input,
+select,
+textarea {
+  border-radius: 999px;
+}
+
+.tab-button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.tab-button[aria-selected="true"] {
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 12px 28px rgba(109, 93, 252, 0.24);
+}
+
+.calendar-cell {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: none;
+}
+
+.calendar-cell:not(.calendar-cell--blank):hover {
+  background: var(--surface-strong);
+  transform: translateY(-1px);
+}
+
+.calendar-content-card,
+.calendar-recommendation-chip {
+  max-width: 100%;
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: none;
+}
+
+.calendar-content-card {
+  width: fit-content;
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.calendar-content-card span {
+  color: inherit;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.calendar-recommendation-chip {
+  cursor: pointer;
+}
+
+.calendar-recommendation-chip--추천 {
+  background: #ede9ff;
+  color: #5b21b6;
+}
+
+.calendar-recommendation-chip--개선 {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.calendar-recommendation-chip--재활용 {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.calendar-recommendation-chip--휴식 {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.selected-decision-detail {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 18px;
+}
+
+.selected-decision-detail h3 {
+  margin: 0;
+}
+
+.decision-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.decision-detail-grid div {
+  display: grid;
+  gap: 5px;
+  border-radius: 18px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.decision-detail-grid span,
+.decision-caution {
+  color: var(--muted);
+}
+
+.compact-list {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.compact-list > * {
+  min-width: 220px;
+}
+
+.performance-visual-card .visual-insight-grid,
+.performance-visual-card .performance-group-grid {
+  margin-top: 0;
+}
+
+.performance-visual-card .metric-grid {
+  opacity: 0.86;
+}
+
+.taxonomy-reference-grid--manager {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.taxonomy-keyword-button--muted {
+  background: rgba(241, 245, 249, 0.92);
+  color: #64748b;
+}
+
+@media (max-width: 980px) {
+  .decision-detail-grid,
+  .taxonomy-reference-grid--manager {
+    grid-template-columns: 1fr;
+  }
+}
