@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { getManagedKeywords, normalizeContentType } from "../lib/taxonomy";
 import type { Account, AccountFilterValue, ContentItem, InsightRecord, Platform } from "../types/models";
 
 type PerformanceTabProps = {
@@ -139,8 +140,10 @@ function getReactionScore(insight: InsightRecord) {
 }
 
 function getContentKeywords(content: ContentItem) {
-  if (content.topicKeywords && content.topicKeywords.length > 0) {
-    return content.topicKeywords.slice(0, 5);
+  return getManagedKeywords(content).slice(0, 5);
+
+  if (content.topicKeywords?.length) {
+    return content.topicKeywords?.slice(0, 5) ?? [];
   }
 
   const sourceText = [content.title, content.topic, content.caption, content.text]
@@ -320,7 +323,7 @@ export function PerformanceTab({ accounts, contents, insights, accountFilter }: 
   const averageComments = getAverage(syncedInsights.flatMap((insight) => (typeof insight.comments === "number" ? [insight.comments] : [])));
   const averageSaves = getAverage(syncedInsights.flatMap((insight) => (typeof insight.saves === "number" ? [insight.saves] : [])));
   const formatPerformance = getGroupedPerformance(scopedContents, syncedInsights, (content) => [
-    content.format ?? content.contentType ?? "other",
+    normalizeContentType(content),
   ]);
   const topicPerformance = getGroupedPerformance(scopedContents, syncedInsights, (content) => [
     content.topic ?? "기타",

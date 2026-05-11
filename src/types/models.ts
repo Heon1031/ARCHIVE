@@ -1,6 +1,6 @@
 export type Platform = "instagram" | "threads" | "brunch" | "blog" | "other";
 
-export type AppTab = "main" | "performance" | "accountSettings";
+export type AppTab = "main" | "performance" | "taxonomy" | "accountSettings";
 
 export type DataSource = "api" | "manual";
 
@@ -52,6 +52,7 @@ export type ContentItem = {
   caption?: string;
   text?: string;
   topicKeywords?: string[];
+  customKeywords?: string[];
   status: ContentStatus;
   plannedDate?: string;
   publishedDate?: string;
@@ -99,4 +100,12 @@ export type UiState = {
   selectedTab: AppTab;
   accountFilter: AccountFilterValue;
   selectedDate?: string;
+};
+
+export type TaxonomySettings = {
+  managedKeywords: string[];
+  contentTopics: string[];
+  contentTypes: string[];
+  stopWords: string[];
+  updatedAt?: string;
 };

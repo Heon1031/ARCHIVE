@@ -8,6 +8,7 @@ type TabNavigationProps = {
 const tabs: Array<{ value: AppTab; label: string }> = [
   { value: "main", label: "메인" },
   { value: "performance", label: "성과" },
+  { value: "taxonomy", label: "분류 관리" },
   { value: "accountSettings", label: "계정 등록/설정" },
 ];
 

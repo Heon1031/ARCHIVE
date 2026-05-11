@@ -6,6 +6,7 @@ import { storage } from "./lib/storage";
 import { AccountSettingsTab } from "./tabs/AccountSettingsTab";
 import { MainTab } from "./tabs/MainTab";
 import { PerformanceTab } from "./tabs/PerformanceTab";
+import { TaxonomyTab } from "./tabs/TaxonomyTab";
 import type { Account, AccountFilterValue, AppTab, ContentItem, InsightRecord } from "./types/models";
 
 const initialFilter: AccountFilterValue = { type: "all" };
@@ -60,6 +61,9 @@ function App() {
           insights={insights}
           accountFilter={accountFilter}
         />
+      )}
+      {activeTab === "taxonomy" && (
+        <TaxonomyTab />
       )}
       {activeTab === "accountSettings" && (
         <AccountSettingsTab

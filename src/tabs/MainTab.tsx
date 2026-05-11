@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
+import { contentTypes, getManagedKeywords, normalizeContentType } from "../lib/taxonomy";
 import type { Account, AccountFilterValue, ContentItem, ContentStatus, InsightRecord, Platform } from "../types/models";
 
 type MainTabProps = {
@@ -25,6 +26,14 @@ type ContentFormState = {
   visualMemo: string;
   reminderMemo: string;
   retrospective: string;
+};
+
+type JudgementKey = "today" | "reminder" | "recommend" | "improve" | "rest" | "month";
+
+type DateRecommendation = {
+  type: "추천" | "개선" | "재활용" | "휴식";
+  title: string;
+  reason: string;
 };
 
 const emptyForm: ContentFormState = {
@@ -151,8 +160,10 @@ function getContentDate(content: ContentItem) {
 }
 
 function getContentKeywords(content: ContentItem) {
-  if (content.topicKeywords && content.topicKeywords.length > 0) {
-    return content.topicKeywords.slice(0, 5);
+  return getManagedKeywords(content).slice(0, 5);
+
+  if (content.topicKeywords?.length) {
+    return content.topicKeywords?.slice(0, 5) ?? [];
   }
 
   const sourceText = [
@@ -204,6 +215,74 @@ function getRecommendations(missingTopic: string, leastUsedFormat: string, keywo
   ];
 
   return recommendations.slice(0, 3);
+}
+
+function getDateRecommendation(
+  dateKey: string,
+  missingTopic: string,
+  leastUsedFormat: string,
+  keywords: string[],
+  oldHighScoreContent?: ContentItem,
+  contents: ContentItem[] = [],
+  insights: InsightRecord[] = [],
+): DateRecommendation {
+  const dayOfWeek = new Date(dateKey).getDay();
+  const keyword = keywords[0] ?? missingTopic;
+  const targetTime = new Date(dateKey).getTime();
+  const postedTimes = contents
+    .map((content) => getContentDate(content))
+    .filter(Boolean)
+    .map((contentDate) => new Date(contentDate).getTime())
+    .filter((time) => Number.isFinite(time));
+  const previousPostGap = postedTimes
+    .filter((time) => time < targetTime)
+    .map((time) => Math.round((targetTime - time) / (1000 * 60 * 60 * 24)))
+    .sort((first, second) => first - second)[0];
+  const lowScoreFormat = contents
+    .filter((content) => hasInsightRecord(content, insights))
+    .sort((first, second) => getContentScore(first, insights) - getContentScore(second, insights))[0];
+
+  if (previousPostGap === 1 || dayOfWeek === 0) {
+    return {
+      type: "휴식",
+      title: "이날은 쉬어도 괜찮습니다.",
+      reason: previousPostGap === 1
+        ? "전날 실제 게시물이 있어 바로 이어 올리기보다 반응을 지켜보는 편이 좋습니다."
+        : "주말에는 새 게시보다 다음 주 긴 글을 준비하는 편이 흐름을 만들기 좋습니다.",
+    };
+  }
+
+  if ((previousPostGap ?? 0) >= 2 && (previousPostGap ?? 0) <= 3) {
+    return {
+      type: "추천",
+      title: `추천-${leastUsedFormat}`,
+      reason: `최근 ${previousPostGap}일간 빈틈이 있어 ${missingTopic} 주제를 ${leastUsedFormat} 형식으로 가볍게 이어가기 좋습니다.`,
+    };
+  }
+
+  if (dayOfWeek === 3 && lowScoreFormat) {
+    return {
+      type: "개선",
+      title: `개선-${normalizeContentType(lowScoreFormat)}`,
+      reason: "성과가 낮았던 형식입니다. 메시지 선명도나 저장을 부르는 구조를 점검해볼 수 있습니다.",
+    };
+  }
+
+  if (dayOfWeek === 5 && oldHighScoreContent) {
+    return {
+      type: "재활용",
+      title: `재활용-${oldHighScoreContent.topic ?? keyword}`,
+      reason: "오래전에 반응이 좋았던 게시물을 현재 상황에 맞게 다시 다듬어볼 만합니다.",
+    };
+  }
+
+  return {
+    type: "추천",
+    title: `추천-${leastUsedFormat}`,
+    reason: keyword
+      ? `${keyword} 키워드를 중심으로 짧고 선명한 운영 흐름을 이어갈 수 있습니다.`
+      : "최근 부족했던 주제와 형식을 기준으로 만든 추천입니다.",
+  };
 }
 
 function hasInsightRecord(content: ContentItem, insights: InsightRecord[]) {
@@ -274,6 +353,7 @@ export function MainTab({
   const [visibleMonth, setVisibleMonth] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(() => getDateKey(new Date()));
   const [selectedContentId, setSelectedContentId] = useState<string | null>(null);
+  const [activeJudgement, setActiveJudgement] = useState<JudgementKey>("today");
 
   const accountMap = useMemo(
     () => new Map(accounts.map((account) => [account.id, account])),
@@ -290,18 +370,16 @@ export function MainTab({
   );
   const publishedThisMonthCount = monthContents.filter((content) => content.status === "published").length;
   const topTopic = getTopValue(monthContents.map((content) => content.topic ?? "기타"));
-  const topFormat = getTopValue(monthContents.map((content) => formatLabels[content.format ?? "other"]));
+  const topFormat = getTopValue(monthContents.map((content) => normalizeContentType(content)));
   const missingTopic =
     defaultTopics.find((topic) => !monthContents.some((content) => (content.topic ?? "기타") === topic)) ??
     "기타";
-  const formatUsage = Object.keys(formatLabels).map((format) => ({
-    format: format as NonNullable<ContentItem["format"]>,
-    count: monthContents.filter((content) => (content.format ?? "other") === format).length,
+  const formatUsage = contentTypes.map((contentType) => ({
+    contentType,
+    count: monthContents.filter((content) => normalizeContentType(content) === contentType).length,
   }));
   const leastUsedFormat =
-    formatLabels[
-      formatUsage.sort((first, second) => first.count - second.count)[0]?.format ?? "other"
-    ];
+    formatUsage.sort((first, second) => first.count - second.count)[0]?.contentType ?? "기타";
   const recentKeywords = getRecentKeywords(monthContents);
   const recommendations = getRecommendations(missingTopic, leastUsedFormat, recentKeywords);
   const todayKey = getDateKey(new Date());
@@ -318,16 +396,90 @@ export function MainTab({
     })
     .sort((first, second) => getContentScore(second, insights) - getContentScore(first, insights))[0];
   const reminderItems = oldHighScoreContent ? [oldHighScoreContent] : [];
+  const selectedDateRecommendation = getDateRecommendation(
+    selectedDate,
+    missingTopic,
+    leastUsedFormat,
+    recentKeywords,
+    oldHighScoreContent,
+    filteredContents,
+    insights,
+  );
   const selectedDateItems = filteredContents.filter((content) => getContentDate(content) === selectedDate);
   const selectedContent = selectedContentId
     ? filteredContents.find((content) => content.id === selectedContentId)
     : undefined;
   const selectedContentInsight = selectedContent ? getLatestInsight(selectedContent, insights) : undefined;
-  const selectedDateRecommendations = getRecommendations(missingTopic, leastUsedFormat, recentKeywords);
+  const selectedDateRecommendations = [
+    selectedDateRecommendation.title,
+    selectedDateRecommendation.reason,
+  ];
   const restDecision = getRestDecision(monthContents.length);
   const productionCount = filteredContents.filter((content) =>
     ["planned", "in_progress", "review", "scheduled"].includes(content.status),
   ).length;
+  const improveTarget = filteredContents
+    .filter((content) => hasInsightRecord(content, insights))
+    .sort((first, second) => getContentScore(first, insights) - getContentScore(second, insights))[0];
+  const judgementCards: Array<{
+    key: JudgementKey;
+    title: string;
+    value: string | number;
+    summary: string;
+    detail: string;
+  }> = [
+    {
+      key: "today",
+      title: "오늘의 방향",
+      value: todayItems.length,
+      summary: todayItems[0]?.title ?? "오늘은 캘린더 흐름만 확인하세요.",
+      detail:
+        todayItems.length > 0
+          ? "오늘 날짜에 연결된 게시물이 있습니다. 링크와 성과 요약을 확인하고 다음 변주 여부를 판단하세요."
+          : "오늘 예정된 게시물이 없습니다. 빈 날짜라면 달력에서 추천/휴식 판단을 확인하면 됩니다.",
+    },
+    {
+      key: "reminder",
+      title: "리마인드",
+      value: oldHighScoreContent ? "1" : "0",
+      summary: oldHighScoreContent?.title ?? "다시 꺼내볼 콘텐츠 없음",
+      detail: oldHighScoreContent
+        ? "오래전에 올렸지만 반응 점수가 있는 게시물입니다. 현재 상황에 맞게 다시 다듬어볼 후보입니다."
+        : "아직 오래된 고반응 게시물이 충분하지 않습니다. 인사이트가 쌓이면 자동으로 후보를 보여줍니다.",
+    },
+    {
+      key: "recommend",
+      title: "추천",
+      value: missingTopic,
+      summary: `${missingTopic} · ${leastUsedFormat}`,
+      detail: `${missingTopic} 주제와 ${leastUsedFormat} 형식이 최근 흐름에서 부족합니다. 달력의 추천 배지를 눌러 날짜별 이유를 확인하세요.`,
+    },
+    {
+      key: "improve",
+      title: "개선",
+      value: improveTarget ? "1" : "0",
+      summary: improveTarget?.title ?? "개선 후보 없음",
+      detail: improveTarget
+        ? "반응 점수가 낮은 편인 게시물입니다. 메시지 선명도, 형식, 저장 유도 요소를 점검해볼 수 있습니다."
+        : "성과 기록이 더 쌓이면 개선 후보를 보여줍니다.",
+    },
+    {
+      key: "rest",
+      title: "휴식 판단",
+      value: monthContents.length >= 12 ? "휴식" : "유지",
+      summary: restDecision,
+      detail: "이번 달 게시 빈도와 반복 주제를 기준으로 쉬어도 되는지 판단합니다. 무리해서 빈 날짜를 채우는 흐름은 만들지 않습니다.",
+    },
+    {
+      key: "month",
+      title: "이번 달 흐름",
+      value: publishedThisMonthCount,
+      summary: `${topTopic} 주제 · ${topFormat} 형식 중심`,
+      detail: `이번 달에는 ${topTopic} 주제와 ${topFormat} 형식이 가장 많습니다. 반복이 심하면 부족한 주제를 섞어보세요.`,
+    },
+  ];
+  const activeJudgementCard =
+    judgementCards.find((card) => card.key === activeJudgement) ?? judgementCards[0];
 
   function updateForm<Key extends keyof ContentFormState>(key: Key, value: ContentFormState[Key]) {
     setForm((currentForm) => ({ ...currentForm, [key]: value }));
@@ -479,6 +631,22 @@ export function MainTab({
       </div>
 
       <div className="section-grid">
+        <div className="home-mini-grid judgement-card-grid">
+          {judgementCards.map((card) => (
+            <button
+              className={`panel-card home-mini-card judgement-card${
+                activeJudgement === card.key ? " judgement-card--active" : ""
+              }`}
+              key={card.key}
+              type="button"
+              onClick={() => setActiveJudgement(card.key)}
+            >
+              <span>{card.title}</span>
+              <strong>{card.value}</strong>
+              <p>{card.summary}</p>
+            </button>
+          ))}
+        </div>
         <div className="home-mini-grid">
           <article className="panel-card home-mini-card">
             <span>오늘 할 일</span>
@@ -527,6 +695,11 @@ export function MainTab({
               <span>부족한 주제</span>
               <strong>{missingTopic}</strong>
             </div>
+          </div>
+          <div className="active-judgement-detail">
+            <span>{activeJudgementCard.title}</span>
+            <strong>{activeJudgementCard.summary}</strong>
+            <p>{activeJudgementCard.detail}</p>
           </div>
           <div className="keyword-row">
             <span>최근 키워드</span>
@@ -762,13 +935,39 @@ export function MainTab({
                   key={day.dateKey}
                   onClick={() => {
                     if (!day.isBlank) {
-                      prepareFormForDate(day.dateKey);
+                      setSelectedDate(day.dateKey);
+                      setSelectedContentId(null);
                     }
                   }}
                   role={day.isBlank ? undefined : "button"}
                   tabIndex={day.isBlank ? undefined : 0}
                 >
                   {!day.isBlank && <span className="calendar-day">{day.day}</span>}
+                  {dayContents.length === 0 && !day.isBlank && (() => {
+                    const dayRecommendation = getDateRecommendation(
+                      day.dateKey,
+                      missingTopic,
+                      leastUsedFormat,
+                      recentKeywords,
+                      oldHighScoreContent,
+                      filteredContents,
+                      insights,
+                    );
+
+                    return (
+                      <button
+                        className={`calendar-recommendation-chip calendar-recommendation-chip--${dayRecommendation.type}`}
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setSelectedDate(day.dateKey);
+                          setSelectedContentId(null);
+                        }}
+                      >
+                        {dayRecommendation.title}
+                      </button>
+                    );
+                  })()}
                   {dayContents.map((content) => (
                     <button
                       className="calendar-content-card"
@@ -784,14 +983,14 @@ export function MainTab({
                       <strong>{content.title}</strong>
                       <small>
                         {accountMap.get(content.accountId)?.displayName ?? "계정 없음"} ·{" "}
-                        {statusLabels[content.status]} · {formatLabels[content.format ?? "other"]} ·{" "}
+                        {statusLabels[content.status]} · {normalizeContentType(content)} ·{" "}
                         {content.topic ?? "기타"}
                       </small>
                       <span className="calendar-hover-preview">
                         <b>{content.title}</b>
                         <em>{content.caption ?? content.text ?? content.draftMemo ?? "본문 미리보기 없음"}</em>
                         <em>
-                          {platformLabels[content.platform]} · {formatLabels[content.format ?? "other"]} ·{" "}
+                          {platformLabels[content.platform]} · {normalizeContentType(content)} ·{" "}
                           {content.topic ?? "기타"}
                         </em>
                         <em>{getContentKeywords(content).join(", ") || "키워드 없음"}</em>
@@ -867,7 +1066,7 @@ export function MainTab({
                 <div className="keyword-row">
                   <b>{accountMap.get(selectedContent.accountId)?.displayName ?? "계정 없음"}</b>
                   <b>{selectedContent.publishedDate ?? selectedContent.plannedDate ?? "날짜 없음"}</b>
-                  <b>{formatLabels[selectedContent.format ?? "other"]}</b>
+                  <b>{normalizeContentType(selectedContent)}</b>
                   <b>{selectedContent.topic ?? "기타"}</b>
                   {getContentKeywords(selectedContent).slice(0, 3).map((keyword) => (
                     <b key={keyword}>{keyword}</b>
@@ -899,7 +1098,7 @@ export function MainTab({
                 <div className="date-content-card" key={content.id}>
                   <strong>{content.title}</strong>
                   <p>
-                    {platformLabels[content.platform]} · {formatLabels[content.format ?? "other"]} ·{" "}
+                    {platformLabels[content.platform]} · {normalizeContentType(content)} ·{" "}
                     {content.topic ?? "기타"}
                   </p>
                   <div className="account-card__actions">
@@ -915,6 +1114,8 @@ export function MainTab({
             </div>
           ) : (
             <div className="date-recommendation-card">
+              <span className="badge">{selectedDateRecommendation.type}</span>
+              <strong>{selectedDateRecommendation.title}</strong>
               <strong>이 날짜에는 아직 콘텐츠가 없습니다.</strong>
               {selectedDateRecommendations.map((recommendation) => (
                 <p key={recommendation}>{recommendation}</p>

@@ -6,6 +6,7 @@ import {
   type ExternalMediaItem,
   type NormalizedInsight,
 } from "../services/metaApi";
+import { getManagedKeywords, inferManagedKeywordsFromText } from "../lib/taxonomy";
 import type { Account, AccountConnectionStatus, ContentItem, InsightRecord, Platform } from "../types/models";
 
 type AccountSettingsTabProps = {
@@ -191,8 +192,49 @@ function inferFormatFromMedia(account: Account, media: ExternalMediaItem): NonNu
   return "other";
 }
 
+function inferContentTypeFromMedia(account: Account, media: ExternalMediaItem) {
+  const mediaType = media.mediaType?.toUpperCase();
+
+  if (account.platform === "threads") {
+    return "Threads";
+  }
+
+  if (mediaType === "CAROUSEL_ALBUM") {
+    return "캐러셀";
+  }
+
+  if (mediaType === "VIDEO" || mediaType === "REELS") {
+    return "릴스/영상";
+  }
+
+  if (mediaType === "IMAGE") {
+    return media.caption ? "이미지+캡션" : "이미지만";
+  }
+
+  return "기타";
+}
+
 function inferTopicFromText(media: ExternalMediaItem) {
   const sourceText = `${media.caption ?? ""} ${media.text ?? ""}`.toLowerCase();
+  const proseTopicRules: Array<{ topic: string; keywords: string[] }> = [
+    { topic: "가족", keywords: ["가족", "아이", "엄마", "아빠", "부모"] },
+    { topic: "결혼/관계", keywords: ["결혼", "관계", "부부", "사랑"] },
+    { topic: "일상", keywords: ["일상", "오늘", "하루", "주말"] },
+    { topic: "마음", keywords: ["마음", "불안", "감정", "슬픔"] },
+    { topic: "위로/응원", keywords: ["위로", "응원", "괜찮", "힘"] },
+    { topic: "성장", keywords: ["성장", "배움", "습관", "도전"] },
+    { topic: "창작", keywords: ["창작", "글", "콘텐츠", "작업"] },
+    { topic: "회고", keywords: ["회고", "기록", "돌아보", "생각"] },
+    { topic: "공지", keywords: ["공지", "안내", "소식", "모집"] },
+  ];
+  const matchedTopic = proseTopicRules.find((rule) => rule.keywords.some((keyword) => sourceText.includes(keyword)))?.topic;
+
+  if (matchedTopic) {
+    return matchedTopic;
+  }
+
+  return "기타";
+
   const topicRules: Array<{ topic: string; keywords: string[] }> = [
     { topic: "가족", keywords: ["가족", "아이", "엄마", "아빠", "부모"] },
     { topic: "결혼/관계", keywords: ["결혼", "관계", "부부", "사랑"] },
@@ -208,6 +250,8 @@ function inferTopicFromText(media: ExternalMediaItem) {
 }
 
 function extractTopicKeywords(media: ExternalMediaItem) {
+  return inferManagedKeywordsFromText(`${media.caption ?? ""} ${media.text ?? ""}`);
+
   const sourceText = `${media.caption ?? ""} ${media.text ?? ""}`;
   const matches = sourceText.match(/[가-힣A-Za-z0-9#]{2,}/g) ?? [];
   return Array.from(new Set(matches.map((keyword) => keyword.replace(/^#/, "")).filter(Boolean))).slice(0, 8);
@@ -275,8 +319,10 @@ function getContentDate(content: ContentItem) {
 }
 
 function getContentKeywords(content: ContentItem) {
-  if (content.topicKeywords && content.topicKeywords.length > 0) {
-    return content.topicKeywords.slice(0, 5);
+  return getManagedKeywords(content).slice(0, 5);
+
+  if (content.topicKeywords?.length) {
+    return content.topicKeywords?.slice(0, 5) ?? [];
   }
 
   const sourceText = [content.title, content.topic, content.caption, content.text]
@@ -318,7 +364,7 @@ function upsertContentsFromMedia(
       platform: account.platform,
       title: getContentTitleFromMedia(media),
       format: inferFormatFromMedia(account, media),
-      contentType: inferFormatFromMedia(account, media),
+      contentType: inferContentTypeFromMedia(account, media),
       topic: inferTopicFromText(media),
       caption: media.caption,
       text: media.text,

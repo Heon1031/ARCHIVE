@@ -1819,3 +1819,699 @@ body {
     min-height: 74px;
   }
 }
+
+/* Apple-style minimal manager calendar polish */
+:root {
+  color: #171321;
+  background: #f7f4ff;
+}
+
+body {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(109, 93, 252, 0.12), transparent 28%),
+    linear-gradient(180deg, #fbfaff 0%, #f7f4ff 52%, #ffffff 100%);
+}
+
+.app-shell {
+  background: transparent;
+}
+
+.app-header {
+  background: rgba(247, 244, 255, 0.72);
+  backdrop-filter: blur(24px);
+}
+
+.app-header__inner {
+  padding: 14px 0 8px;
+}
+
+.app-title {
+  color: #171321;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.app-description {
+  color: #7a7488;
+  font-size: 12px;
+}
+
+.app-main {
+  padding-top: 8px;
+}
+
+.top-control-bar {
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.58);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 48px rgba(65, 52, 123, 0.08);
+  padding: 8px;
+}
+
+.tab-navigation {
+  border: 0;
+  background: rgba(236, 232, 255, 0.72);
+  box-shadow: none;
+  padding: 4px;
+}
+
+.tab-button {
+  color: #7a7488;
+  font-size: 13px;
+  padding: 8px 14px;
+}
+
+.tab-button:hover {
+  background: rgba(255, 255, 255, 0.74);
+  color: #6d5dfc;
+}
+
+.tab-button[aria-selected="true"] {
+  background: #6d5dfc;
+  box-shadow: 0 8px 18px rgba(109, 93, 252, 0.18);
+  color: #ffffff;
+}
+
+.account-filter {
+  background: transparent;
+  padding: 0;
+}
+
+.filter-label {
+  color: #7a7488;
+  font-size: 12px;
+}
+
+.filter-select {
+  min-width: 168px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #171321;
+  padding: 9px 34px 9px 13px;
+}
+
+.tab-panel,
+.section-grid {
+  gap: 14px;
+}
+
+.panel-card,
+.settings-header,
+.account-card,
+.content-row,
+.summary-row,
+.performance-row,
+.metric-card,
+.home-summary-item,
+.performance-group,
+.content-db-row,
+.visual-chart-card,
+.management-panel,
+.operation-judgement-card,
+.date-content-card,
+.date-recommendation-card {
+  border: 0;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 18px 52px rgba(65, 52, 123, 0.08);
+}
+
+.panel-card,
+.settings-header {
+  padding: 18px;
+}
+
+.panel-card h2,
+.panel-card h3,
+.settings-header h2,
+.card-heading h3 {
+  color: #171321;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.panel-card p,
+.settings-header p,
+.content-summary p {
+  color: #7a7488;
+}
+
+.home-mini-grid {
+  gap: 12px;
+}
+
+.home-mini-card {
+  min-height: 84px;
+  padding: 14px;
+}
+
+.home-mini-card span {
+  color: #7a7488;
+  font-size: 11px;
+}
+
+.home-mini-card strong {
+  color: #171321;
+  font-size: 25px;
+  letter-spacing: 0;
+}
+
+.home-mini-card p {
+  color: #7a7488;
+}
+
+.calendar-home-card {
+  padding: 18px;
+}
+
+.month-controls .secondary-button {
+  min-width: 0;
+  padding: 8px 12px;
+}
+
+.calendar-grid {
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.calendar-weekday {
+  color: #7a7488;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 6px;
+}
+
+.calendar-cell {
+  min-height: 92px;
+  border: 0;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: none;
+  outline: 1px solid rgba(109, 93, 252, 0.07);
+  padding: 8px;
+  transition:
+    background 160ms ease,
+    outline-color 160ms ease,
+    transform 160ms ease;
+}
+
+.calendar-cell:hover {
+  background: #ffffff;
+  box-shadow: none;
+  outline-color: rgba(109, 93, 252, 0.18);
+  transform: translateY(-1px);
+}
+
+.calendar-cell--blank {
+  background: rgba(255, 255, 255, 0.36);
+  outline-color: transparent;
+}
+
+.calendar-day {
+  color: #7a7488;
+  font-size: 11px;
+}
+
+.calendar-content-card {
+  min-width: 30px;
+  border-radius: 999px;
+  background: #ece8ff;
+  color: #6d5dfc;
+  padding: 4px 7px;
+}
+
+.calendar-content-card:hover {
+  background: #e1dcff;
+  box-shadow: none;
+  transform: translateY(-1px);
+}
+
+.calendar-content-card span {
+  background: transparent;
+  color: #6d5dfc;
+  font-size: 10px;
+  padding: 0;
+}
+
+.calendar-hover-preview {
+  display: none !important;
+}
+
+.date-management-card {
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.date-management-card > .card-heading > div::before {
+  color: #171321;
+}
+
+.date-management-card > .card-heading > div::after {
+  color: #7a7488;
+}
+
+.operation-judgement-grid {
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.operation-judgement-card {
+  box-shadow: none;
+  outline: 1px solid rgba(109, 93, 252, 0.08);
+  padding: 13px;
+}
+
+.operation-judgement-card span,
+.insight-summary-row span {
+  color: #7a7488;
+}
+
+.operation-judgement-card strong {
+  color: #171321;
+}
+
+.selected-content-detail {
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 14px;
+}
+
+.content-thumbnail {
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 72% 24%, rgba(109, 93, 252, 0.2), transparent 30%),
+    #ece8ff;
+}
+
+.content-thumbnail span {
+  color: #6d5dfc;
+}
+
+.insight-summary-row span,
+.keyword-row b,
+.performance-metrics span,
+.badge {
+  background: #ece8ff;
+  color: #6d5dfc;
+}
+
+.primary-button,
+.secondary-button,
+.danger-button,
+.muted-action {
+  border: 0;
+  border-radius: 999px;
+  font-size: 13px;
+  padding: 9px 14px;
+}
+
+.primary-button {
+  background: #6d5dfc;
+  box-shadow: 0 10px 22px rgba(109, 93, 252, 0.16);
+}
+
+.secondary-button {
+  background: rgba(236, 232, 255, 0.78);
+  color: #6d5dfc;
+}
+
+.danger-button {
+  background: rgba(254, 226, 226, 0.78);
+}
+
+.performance-command-card,
+.performance-visual-card {
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.management-metric-grid .metric-card,
+.metric-card {
+  box-shadow: none;
+  outline: 1px solid rgba(109, 93, 252, 0.08);
+}
+
+.metric-card span,
+.management-row span,
+.management-row small,
+.management-panel p,
+.top-content-row span {
+  color: #7a7488;
+}
+
+.metric-card strong,
+.management-row strong,
+.top-content-row strong,
+.visual-chart-card h4,
+.management-panel h4 {
+  color: #171321;
+}
+
+.mini-bar span,
+.performance-group-row::before {
+  background: linear-gradient(180deg, #6d5dfc, #c9c2ff);
+}
+
+.performance-group-row::before {
+  background: linear-gradient(90deg, #6d5dfc, #c9c2ff);
+}
+
+.summary-row--head,
+.content-db-row--head {
+  background: #ece8ff;
+  color: #6d5dfc;
+}
+
+@media (max-width: 980px) {
+  .top-control-bar {
+    border-radius: 22px;
+  }
+}
+
+@media (max-width: 760px) {
+  .calendar-cell {
+    min-height: 78px;
+  }
+
+  .selected-content-detail {
+    padding: 12px;
+  }
+}
+/* Taxonomy management */
+.taxonomy-tab {
+  display: grid;
+  gap: 18px;
+}
+
+.taxonomy-header {
+  align-items: stretch;
+}
+
+.taxonomy-count-card {
+  min-width: 160px;
+  border-radius: 24px;
+  padding: 18px 20px;
+  background: linear-gradient(135deg, var(--primary-soft), #ffffff);
+  box-shadow: var(--soft-shadow);
+  display: grid;
+  align-content: center;
+  gap: 4px;
+}
+
+.taxonomy-count-card strong {
+  color: var(--text);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.taxonomy-count-card span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.taxonomy-reference-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.taxonomy-reference-card {
+  min-height: 150px;
+}
+
+.taxonomy-chip-row,
+.taxonomy-keyword-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.taxonomy-chip,
+.taxonomy-keyword-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.taxonomy-chip--soft {
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+}
+
+.taxonomy-content-list {
+  display: grid;
+  gap: 14px;
+}
+
+.taxonomy-content-card {
+  display: grid;
+  gap: 14px;
+  border-radius: 24px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.taxonomy-post-summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.taxonomy-post-summary strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--text);
+  font-size: 17px;
+}
+
+.taxonomy-post-summary p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.taxonomy-control-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.taxonomy-control-grid label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.taxonomy-keyword-button {
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.taxonomy-keyword-button:hover {
+  transform: translateY(-1px);
+}
+
+.taxonomy-keyword-button--selected {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+@media (max-width: 900px) {
+  .taxonomy-reference-grid,
+  .taxonomy-control-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .taxonomy-post-summary {
+    flex-direction: column;
+  }
+}
+
+/* Manager calendar role split */
+.main-home-panel .section-grid {
+  align-items: start;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.78fr) minmax(520px, 1.42fr);
+  gap: 18px;
+}
+
+.main-home-panel .home-mini-grid:not(.judgement-card-grid),
+.main-home-panel .content-editor-card,
+.main-home-panel .date-editor-form,
+.main-home-panel .selected-content-detail a.secondary-button,
+.main-home-panel .date-content-strip .account-card__actions {
+  display: none;
+}
+
+.main-home-panel .judgement-card-grid {
+  grid-column: 1;
+  grid-template-columns: 1fr;
+  order: 0;
+}
+
+.main-home-panel .flow-summary-card {
+  grid-column: 1;
+  order: 1;
+}
+
+.main-home-panel .date-management-card {
+  grid-column: 1;
+  order: 2;
+}
+
+.main-home-panel .calendar-home-card {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  order: 0;
+}
+
+.judgement-card {
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.judgement-card--active {
+  background: linear-gradient(135deg, var(--primary-soft), rgba(255, 255, 255, 0.92));
+  box-shadow: 0 18px 42px rgba(109, 93, 252, 0.18);
+}
+
+.active-judgement-detail {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  border-radius: 24px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.active-judgement-detail span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.active-judgement-detail strong {
+  color: var(--text);
+}
+
+.calendar-content-card strong,
+.calendar-content-card small,
+.calendar-hover-preview {
+  display: none !important;
+}
+
+.calendar-recommendation-chip {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(236, 232, 255, 0.92);
+  color: var(--primary-dark);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.calendar-recommendation-chip--휴식 {
+  background: rgba(245, 243, 255, 0.86);
+  color: var(--muted);
+}
+
+.calendar-recommendation-chip--개선 {
+  background: rgba(254, 243, 199, 0.9);
+  color: #92400e;
+}
+
+.calendar-recommendation-chip--재활용 {
+  background: rgba(220, 252, 231, 0.9);
+  color: #166534;
+}
+
+.performance-command-card,
+.performance-detail-card,
+.performance-management-grid {
+  display: none;
+}
+
+.performance-visual-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.performance-visual-card .visual-insight-grid {
+  order: 1;
+}
+
+.performance-visual-card .performance-group-grid {
+  order: 2;
+}
+
+.performance-visual-card .metric-grid {
+  order: 3;
+  margin-top: 14px;
+}
+
+.taxonomy-reference-grid--manager {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.taxonomy-add-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.taxonomy-keyword-button:disabled {
+  cursor: default;
+  opacity: 0.78;
+}
+
+.taxonomy-chip--muted {
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+}
+
+.taxonomy-description-list {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.taxonomy-description-item {
+  display: grid;
+  gap: 4px;
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.taxonomy-description-item span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 980px) {
+  .main-home-panel .section-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .main-home-panel .calendar-home-card,
+  .main-home-panel .flow-summary-card,
+  .main-home-panel .date-management-card,
+  .main-home-panel .judgement-card-grid {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .taxonomy-reference-grid--manager,
+  .taxonomy-description-list {
+    grid-template-columns: 1fr;
+  }
+}
