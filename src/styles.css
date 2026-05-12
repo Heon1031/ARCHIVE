@@ -2715,3 +2715,1779 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+/* Deployment QA polish */
+.main-home-panel .section-grid {
+  align-items: start;
+}
+
+.main-home-panel .settings-header {
+  margin-bottom: 14px;
+}
+
+.main-home-panel .settings-header p {
+  max-width: 720px;
+}
+
+.judgement-card {
+  min-height: 108px;
+  padding: 16px;
+}
+
+.judgement-card p,
+.compact-card p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.judgement-card--active,
+.calendar-content-card--selected,
+.calendar-recommendation-chip--selected {
+  outline: 2px solid rgba(109, 93, 252, 0.38);
+  box-shadow: 0 14px 34px rgba(109, 93, 252, 0.18);
+}
+
+.calendar-content-card--selected,
+.calendar-recommendation-chip--selected {
+  transform: translateY(-1px);
+}
+
+.calendar-home-card {
+  min-height: 0;
+}
+
+.calendar-grid {
+  gap: 9px;
+}
+
+.calendar-cell {
+  min-height: 94px;
+  padding: 10px;
+}
+
+.calendar-day {
+  font-weight: 800;
+  color: var(--text);
+}
+
+.calendar-content-card,
+.calendar-recommendation-chip {
+  line-height: 1.15;
+}
+
+.calendar-hover-preview {
+  display: none !important;
+}
+
+.date-management-card {
+  margin-top: 18px;
+}
+
+.selected-content-detail,
+.selected-decision-detail {
+  scroll-margin-top: 16px;
+}
+
+.performance-command-card,
+.performance-management-grid {
+  display: none !important;
+}
+
+.performance-visual-card {
+  order: -20;
+}
+
+.performance-visual-card .metric-grid {
+  order: 3;
+  margin-top: 14px;
+}
+
+.performance-visual-card .visual-insight-grid {
+  order: 1;
+}
+
+.performance-visual-card .performance-group-grid {
+  order: 2;
+}
+
+.performance-detail-card {
+  opacity: 0.94;
+}
+
+.taxonomy-reference-card .taxonomy-chip-row,
+.taxonomy-content-card .taxonomy-chip-row {
+  max-height: 220px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.taxonomy-reference-card .taxonomy-chip-row::-webkit-scrollbar,
+.taxonomy-content-card .taxonomy-chip-row::-webkit-scrollbar {
+  width: 6px;
+}
+
+.taxonomy-reference-card .taxonomy-chip-row::-webkit-scrollbar-thumb,
+.taxonomy-content-card .taxonomy-chip-row::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(109, 93, 252, 0.18);
+}
+
+@media (max-width: 760px) {
+  .main-home-panel .settings-header {
+    gap: 10px;
+  }
+
+  .judgement-card {
+    min-height: 0;
+  }
+
+  .calendar-grid {
+    gap: 6px;
+  }
+
+  .calendar-cell {
+    min-height: 82px;
+    padding: 8px;
+    border-radius: 18px;
+  }
+
+  .calendar-content-card,
+  .calendar-recommendation-chip {
+    max-width: 100%;
+    padding: 4px 7px;
+    font-size: 11px;
+  }
+}
+
+/* Liquid Glass theme override */
+:root {
+  --lg-app-bg: #f5f6fb;
+  --lg-surface: rgba(255, 255, 255, 0.62);
+  --lg-surface-strong: rgba(255, 255, 255, 0.82);
+  --lg-border: rgba(255, 255, 255, 0.72);
+  --lg-hairline: rgba(60, 60, 67, 0.12);
+  --lg-text: #1d1d1f;
+  --lg-muted: #6e6e73;
+  --lg-primary: #5e5ce6;
+  --lg-primary-soft: rgba(94, 92, 230, 0.12);
+  --lg-improve: rgba(255, 149, 0, 0.14);
+  --lg-revive: rgba(52, 199, 89, 0.14);
+  --lg-rest: rgba(142, 142, 147, 0.14);
+  --lg-shadow: 0 24px 80px rgba(31, 35, 60, 0.12);
+}
+
+body {
+  background:
+    radial-gradient(circle at 16% 0%, rgba(255, 255, 255, 0.9), transparent 30%),
+    radial-gradient(circle at 82% 8%, rgba(191, 219, 254, 0.42), transparent 34%),
+    linear-gradient(135deg, #f5f6fb 0%, #fbfbfd 52%, #f0f2f8 100%);
+  color: var(--lg-text);
+}
+
+.app-shell {
+  background: transparent;
+}
+
+.app-header {
+  min-height: 64px;
+  border-bottom: 1px solid var(--lg-hairline);
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: none;
+  backdrop-filter: blur(26px) saturate(1.2);
+}
+
+.app-title h1,
+.settings-header h2,
+.card-heading h3,
+.panel-card h3 {
+  color: var(--lg-text);
+  letter-spacing: 0;
+}
+
+.app-title p,
+.settings-header p,
+.panel-card p,
+.card-heading p,
+.empty-copy,
+.api-result-message {
+  color: var(--lg-muted);
+}
+
+.tab-navigation {
+  border: 1px solid var(--lg-hairline);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.52);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(18px);
+}
+
+.tab-button {
+  min-height: 34px;
+  padding: 8px 15px;
+  border: 0;
+  color: var(--lg-muted);
+  box-shadow: none;
+}
+
+.tab-button[aria-selected="true"] {
+  background: rgba(29, 29, 31, 0.88);
+  color: #ffffff;
+  box-shadow: 0 10px 28px rgba(29, 29, 31, 0.14);
+}
+
+.filter-select,
+input,
+select,
+textarea {
+  border: 1px solid var(--lg-hairline);
+  background: rgba(255, 255, 255, 0.68);
+  color: var(--lg-text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.panel-card,
+.metric-card,
+.visual-chart-card,
+.taxonomy-content-card,
+.date-content-card,
+.date-recommendation-card,
+.selected-content-detail,
+.selected-decision-detail,
+.judgement-card,
+.home-mini-card {
+  border: 1px solid var(--lg-border);
+  border-radius: 28px;
+  background: var(--lg-surface);
+  box-shadow: var(--lg-shadow);
+  backdrop-filter: blur(24px) saturate(1.18);
+}
+
+.panel-card {
+  padding: 22px;
+}
+
+.badge,
+.keyword-row b,
+.taxonomy-keyword-button {
+  border: 1px solid var(--lg-hairline);
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--lg-text);
+  box-shadow: none;
+}
+
+.primary-button,
+.secondary-button,
+.danger-button {
+  min-height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--lg-hairline);
+  box-shadow: none;
+}
+
+.primary-button {
+  background: rgba(29, 29, 31, 0.88);
+  color: #ffffff;
+}
+
+.secondary-button {
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--lg-text);
+}
+
+.main-home-panel .settings-header,
+.performance-panel > .settings-header {
+  min-height: 0;
+  padding: 12px 4px 18px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.performance-panel > .settings-header {
+  align-items: center;
+}
+
+.performance-panel > .settings-header h2 {
+  font-size: 26px;
+}
+
+.performance-panel > .settings-header p {
+  max-width: 680px;
+  margin-top: 4px;
+}
+
+.main-home-panel .section-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.main-home-panel .judgement-card-grid {
+  grid-column: 1;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.main-home-panel .flow-summary-card {
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 0;
+}
+
+.main-home-panel .calendar-home-card {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  min-height: 0;
+}
+
+.main-home-panel .date-management-card {
+  grid-column: 1 / -1;
+  grid-row: 4;
+}
+
+.main-home-panel .section-grid > .home-mini-grid:not(.judgement-card-grid),
+.main-home-panel .content-editor-card,
+.main-home-panel .section-grid > article.panel-card:not(.flow-summary-card):not(.calendar-home-card):not(.date-management-card) {
+  grid-column: 1 / -1;
+}
+
+.judgement-card {
+  min-height: 0;
+  padding: 17px;
+  text-align: left;
+}
+
+.judgement-card span {
+  color: var(--lg-muted);
+}
+
+.judgement-card strong {
+  color: var(--lg-text);
+  font-size: 22px;
+}
+
+.judgement-card--active,
+.calendar-content-card--selected,
+.calendar-recommendation-chip--selected {
+  outline: 2px solid rgba(94, 92, 230, 0.24);
+  background: var(--lg-surface-strong);
+  box-shadow: 0 18px 50px rgba(31, 35, 60, 0.16);
+}
+
+.calendar-home-card .card-heading {
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.month-controls {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.54);
+  padding: 5px;
+}
+
+.month-controls strong {
+  color: var(--lg-text);
+}
+
+.calendar-grid {
+  gap: 10px;
+}
+
+.calendar-weekday {
+  color: var(--lg-muted);
+  font-weight: 700;
+}
+
+.calendar-cell {
+  min-height: 112px;
+  border: 1px solid var(--lg-hairline);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84);
+}
+
+.calendar-cell:not(.calendar-cell--blank):hover {
+  background: rgba(255, 255, 255, 0.76);
+  transform: translateY(-1px);
+}
+
+.calendar-day {
+  color: var(--lg-text);
+}
+
+.calendar-content-card,
+.calendar-recommendation-chip {
+  min-width: 42px;
+  max-width: 100%;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+}
+
+.calendar-content-card {
+  background: rgba(94, 92, 230, 0.88);
+  color: #ffffff;
+}
+
+.calendar-content-card span {
+  color: inherit;
+}
+
+.calendar-content-card strong,
+.calendar-content-card small {
+  display: none !important;
+}
+
+.calendar-recommendation-chip {
+  background: var(--lg-primary-soft);
+  color: #343184;
+}
+
+.calendar-recommendation-chip--selected {
+  border-color: rgba(94, 92, 230, 0.28);
+}
+
+.operation-judgement-card,
+.active-judgement-detail,
+.home-summary-item,
+.decision-detail-grid div {
+  border: 1px solid var(--lg-hairline);
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: none;
+}
+
+.selected-content-detail,
+.selected-decision-detail {
+  background: var(--lg-surface-strong);
+}
+
+.performance-panel .section-grid {
+  align-items: start;
+}
+
+.performance-visual-card {
+  order: -30;
+  grid-column: 1 / -1;
+}
+
+.performance-visual-card h3 {
+  margin-bottom: 16px;
+  font-size: 22px;
+}
+
+.performance-visual-card .visual-insight-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  gap: 16px;
+}
+
+.visual-chart-card {
+  min-height: 260px;
+  padding: 20px;
+}
+
+.mini-bar-chart {
+  min-height: 190px;
+  align-items: end;
+  padding-top: 20px;
+}
+
+.mini-bar span {
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(94, 92, 230, 0.8), rgba(94, 92, 230, 0.26));
+}
+
+.performance-group-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.performance-group {
+  border: 1px solid var(--lg-hairline);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.56);
+}
+
+.performance-group-row {
+  border: 0;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.performance-detail-card,
+.performance-raw-record-card {
+  order: 40;
+  grid-column: 1 / -1;
+}
+
+.performance-detail-card .metric-grid {
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+
+.summary-table {
+  border: 0;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.46);
+  overflow: hidden;
+}
+
+.summary-row {
+  border-color: var(--lg-hairline);
+}
+
+.taxonomy-reference-card .taxonomy-chip-row,
+.taxonomy-content-card .taxonomy-chip-row {
+  max-height: 210px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+@media (max-width: 1080px) {
+  .main-home-panel .section-grid,
+  .performance-visual-card .visual-insight-grid,
+  .performance-group-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .main-home-panel .judgement-card-grid,
+  .main-home-panel .flow-summary-card,
+  .main-home-panel .calendar-home-card,
+  .main-home-panel .date-management-card {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-header {
+    min-height: 56px;
+  }
+
+  .panel-card {
+    padding: 16px;
+    border-radius: 22px;
+  }
+
+  .calendar-cell {
+    min-height: 84px;
+    border-radius: 18px;
+  }
+
+  .calendar-content-card,
+  .calendar-recommendation-chip {
+    min-width: 34px;
+    padding: 4px 7px;
+    font-size: 10px;
+  }
+}
+
+/* Layout repair: performance flow and manager cards */
+.performance-panel > .settings-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  margin-bottom: 10px;
+  padding: 8px 4px 14px;
+}
+
+.performance-panel > .settings-header h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.performance-panel > .settings-header .api-result-message {
+  display: none;
+}
+
+.performance-panel .section-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  align-items: stretch;
+}
+
+.performance-panel .section-grid > article {
+  width: 100%;
+  min-width: 0;
+}
+
+.performance-visual-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow: visible;
+}
+
+.performance-visual-card .visual-insight-grid,
+.performance-visual-card .performance-group-grid,
+.performance-visual-card .metric-grid {
+  width: 100%;
+  min-width: 0;
+}
+
+.performance-visual-card .visual-insight-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
+  gap: 18px;
+  align-items: stretch;
+  order: 1;
+}
+
+.performance-visual-card .performance-group-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  order: 2;
+}
+
+.performance-visual-card .metric-grid {
+  order: 3;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  margin-top: 0;
+  padding-top: 2px;
+}
+
+.visual-chart-card,
+.performance-group {
+  min-height: 240px;
+  overflow: hidden;
+}
+
+.visual-chart-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.mini-bar-chart {
+  flex: 1;
+  min-height: 180px;
+  align-items: end;
+  padding: 18px 4px 4px;
+}
+
+.top-content-row {
+  min-width: 0;
+}
+
+.top-content-row strong,
+.top-content-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.performance-detail-card,
+.performance-raw-record-card,
+.performance-panel .section-grid > article:not(.performance-visual-card) {
+  position: static;
+  order: 20;
+}
+
+.performance-detail-card {
+  opacity: 1;
+}
+
+.performance-detail-card h3,
+.performance-detail-card > .metric-grid,
+.performance-detail-card > .empty-copy {
+  display: none;
+}
+
+.performance-detail-card::before {
+  content: "숫자 요약은 하단 보조 영역에서 확인합니다.";
+  display: block;
+  color: var(--lg-muted);
+  font-size: 14px;
+}
+
+.main-home-panel .judgement-card-grid {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.main-home-panel .judgement-card {
+  min-height: auto;
+}
+
+.main-home-panel .judgement-card span {
+  font-size: 12px;
+}
+
+.main-home-panel .judgement-card strong {
+  font-size: 20px;
+  line-height: 1.18;
+}
+
+.calendar-cell--today {
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: inset 0 0 0 1px rgba(94, 92, 230, 0.2);
+}
+
+.calendar-day {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.calendar-day small {
+  border-radius: 999px;
+  padding: 2px 6px;
+  background: var(--lg-primary-soft);
+  color: #343184;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.calendar-recommendation-chip {
+  max-width: 74px;
+}
+
+@media (max-width: 1080px) {
+  .performance-visual-card .visual-insight-grid,
+  .performance-visual-card .performance-group-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .visual-chart-card,
+  .performance-group {
+    min-height: auto;
+  }
+}
+
+/* Reminder and growth badge refinement */
+.main-home-panel .section-grid > article.panel-card:not(.flow-summary-card):not(.calendar-home-card):not(.date-management-card):not(.today-reminder-card) {
+  display: none;
+}
+
+.main-home-panel .today-reminder-card {
+  grid-column: 1;
+  grid-row: 3;
+  display: grid !important;
+  visibility: visible;
+}
+
+.main-home-panel .date-management-card {
+  grid-row: 4;
+}
+
+.today-reminder-card {
+  min-height: 360px;
+  align-self: stretch;
+}
+
+.reminder-slide {
+  display: grid;
+  gap: 14px;
+  cursor: pointer;
+  outline: none;
+}
+
+.reminder-slide:hover .content-thumbnail,
+.reminder-slide:focus-visible .content-thumbnail {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 44px rgba(31, 35, 60, 0.12);
+}
+
+.reminder-slide .content-thumbnail {
+  width: 100%;
+  min-height: 150px;
+  border-radius: 26px;
+}
+
+.reminder-slide strong {
+  display: block;
+  color: var(--lg-text);
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.reminder-slide p {
+  display: -webkit-box;
+  margin: 8px 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.reminder-reason {
+  color: var(--lg-text);
+  font-weight: 700;
+}
+
+.reminder-score {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--lg-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.reminder-controls,
+.reminder-dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reminder-controls .secondary-button {
+  min-height: 30px;
+  padding: 6px 11px;
+  font-size: 12px;
+}
+
+.reminder-dots button {
+  width: 7px;
+  height: 7px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(60, 60, 67, 0.18);
+  cursor: pointer;
+}
+
+.reminder-dots button.is-active {
+  width: 18px;
+  background: var(--lg-primary);
+}
+
+.calendar-cell {
+  padding: 15px;
+}
+
+.calendar-day {
+  margin-bottom: 12px;
+}
+
+.calendar-day small {
+  display: none;
+}
+
+.calendar-cell--today {
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255, 149, 0, 0.52),
+    0 18px 44px rgba(255, 149, 0, 0.08);
+}
+
+.calendar-content-card,
+.calendar-recommendation-chip {
+  margin-top: 4px;
+  line-height: 1.2;
+}
+
+.calendar-recommendation-chip--추천,
+.calendar-recommendation-chip--짧은글 {
+  background: rgba(94, 92, 230, 0.12);
+  color: #343184;
+}
+
+.calendar-recommendation-chip--긴글 {
+  background: rgba(0, 122, 255, 0.12);
+  color: #1f4f86;
+}
+
+.calendar-recommendation-chip--이미지 {
+  background: rgba(52, 199, 89, 0.14);
+  color: #1f6b3a;
+}
+
+.calendar-recommendation-chip--릴스 {
+  background: rgba(255, 45, 85, 0.12);
+  color: #8f1d3e;
+}
+
+.calendar-recommendation-chip--캐러셀 {
+  background: rgba(90, 200, 250, 0.16);
+  color: #1d5f78;
+}
+
+.calendar-recommendation-chip--재활용 {
+  background: var(--lg-revive);
+  color: #1f6b3a;
+}
+
+.calendar-recommendation-chip--개선 {
+  background: var(--lg-improve);
+  color: #8a4a00;
+}
+
+.calendar-recommendation-chip--휴식 {
+  background: var(--lg-rest);
+  color: #55555c;
+}
+
+.calendar-recommendation-chip--more {
+  background: rgba(60, 60, 67, 0.1);
+  color: var(--lg-muted);
+}
+
+.same-day-recommendations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  border-radius: 18px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.same-day-recommendations > span {
+  width: 100%;
+  color: var(--lg-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 1080px) {
+  .main-home-panel .today-reminder-card,
+  .main-home-panel .date-management-card {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+/* Compact reminder card and calendar recommendation cleanup */
+.main-home-panel .flow-summary-card {
+  padding: 16px;
+}
+
+.main-home-panel .flow-summary-card > .card-heading,
+.main-home-panel .flow-summary-card .home-summary-grid,
+.main-home-panel .flow-summary-card > .keyword-row,
+.main-home-panel .flow-summary-card > .recommendation-list {
+  display: none;
+}
+
+.main-home-panel .flow-summary-card .active-judgement-detail {
+  margin-top: 0;
+}
+
+.main-home-panel .today-reminder-card {
+  min-height: 0;
+  padding: 16px;
+}
+
+.today-reminder-card .card-heading {
+  margin-bottom: 10px;
+}
+
+.today-reminder-card .card-heading p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.reminder-slide {
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.reminder-slide .content-thumbnail {
+  width: 100%;
+  height: 132px;
+  min-height: 0;
+  max-height: 140px;
+  overflow: hidden;
+  border-radius: 22px;
+}
+
+.reminder-slide > div:nth-child(2) {
+  min-width: 0;
+}
+
+.reminder-slide strong {
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reminder-slide p {
+  margin: 4px 0;
+  font-size: 12px;
+  line-height: 1.45;
+  -webkit-line-clamp: 2;
+}
+
+.reminder-reason {
+  -webkit-line-clamp: 1 !important;
+}
+
+.reminder-score {
+  padding: 5px 8px;
+  font-size: 11px;
+}
+
+.reminder-controls,
+.reminder-dots {
+  grid-column: 1;
+}
+
+.reminder-controls .secondary-button {
+  min-height: 28px;
+  padding: 5px 9px;
+}
+
+.calendar-recommendation-chip--짧은글,
+.calendar-recommendation-chip--short,
+.calendar-recommendation-chip--shortText {
+  background: rgba(94, 92, 230, 0.12);
+  color: #343184;
+}
+
+.calendar-recommendation-chip--긴글,
+.calendar-recommendation-chip--essay,
+.calendar-recommendation-chip--long {
+  background: rgba(0, 122, 255, 0.12);
+  color: #1f4f86;
+}
+
+.calendar-recommendation-chip--이미지,
+.calendar-recommendation-chip--image {
+  background: rgba(52, 199, 89, 0.14);
+  color: #1f6b3a;
+}
+
+.calendar-recommendation-chip--릴스,
+.calendar-recommendation-chip--reel {
+  background: rgba(255, 45, 85, 0.12);
+  color: #8f1d3e;
+}
+
+.calendar-recommendation-chip--캐러셀,
+.calendar-recommendation-chip--carousel {
+  background: rgba(90, 200, 250, 0.16);
+  color: #1d5f78;
+}
+/* Main responsive stability override */
+.main-home-panel {
+  width: min(1480px, calc(100% - 48px));
+  margin-inline: auto;
+}
+
+.main-home-panel .section-grid {
+  grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
+  gap: 28px;
+}
+
+.main-home-panel .judgement-card-grid,
+.main-home-panel .flow-summary-card,
+.main-home-panel .today-reminder-card,
+.main-home-panel .calendar-home-card,
+.main-home-panel .date-management-card {
+  min-width: 0;
+}
+
+.main-home-panel .judgement-card-grid {
+  gap: 12px;
+}
+
+.main-home-panel .calendar-home-card {
+  overflow: hidden;
+}
+
+.main-home-panel .calendar-grid,
+.main-home-panel .calendar-cell {
+  min-width: 0;
+}
+
+.main-home-panel .today-reminder-card {
+  align-self: start;
+  max-width: 400px;
+  max-height: 420px;
+  overflow: hidden;
+  padding: 14px;
+}
+
+.today-reminder-card .card-heading {
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.today-reminder-card .card-heading h3 {
+  font-size: 17px;
+}
+
+.today-reminder-card .card-heading p {
+  font-size: 12px;
+}
+
+.reminder-slide {
+  gap: 8px;
+}
+
+.reminder-slide .content-thumbnail {
+  height: 120px;
+  max-height: 120px;
+  border-radius: 20px;
+}
+
+.reminder-slide strong {
+  font-size: 14px;
+}
+
+.reminder-slide p {
+  line-height: 1.38;
+}
+
+.reminder-slide .keyword-row {
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.reminder-slide .keyword-row b {
+  padding: 3px 6px;
+  font-size: 10px;
+}
+
+.reminder-score {
+  margin-top: 4px;
+}
+
+@media (min-width: 1025px) {
+  .main-home-panel .section-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+  }
+
+  .main-home-panel .judgement-card-grid {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .main-home-panel .flow-summary-card {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .main-home-panel .today-reminder-card {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .main-home-panel .calendar-home-card {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+  }
+
+  .main-home-panel .date-management-card {
+    grid-column: 1 / -1;
+    grid-row: 4;
+  }
+}
+
+@media (max-width: 1024px) {
+  .main-home-panel {
+    width: min(900px, calc(100% - 32px));
+  }
+
+  .main-home-panel .section-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .main-home-panel .judgement-card-grid {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .main-home-panel .flow-summary-card {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .main-home-panel .today-reminder-card {
+    grid-column: 1;
+    grid-row: 3;
+    max-width: none;
+  }
+
+  .main-home-panel .calendar-home-card {
+    grid-column: 1;
+    grid-row: 4;
+  }
+
+  .main-home-panel .date-management-card {
+    grid-column: 1;
+    grid-row: 5;
+  }
+}
+
+/* Main grid-template-areas stabilization */
+.main-home-panel .section-grid {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+  grid-template-areas:
+    "cards calendar"
+    "detail calendar"
+    "reminder calendar"
+    "date date";
+  gap: clamp(20px, 2vw, 32px);
+  align-items: start;
+}
+
+.main-home-panel .judgement-card-grid {
+  grid-area: cards;
+  min-width: 0;
+  max-width: 380px;
+}
+
+.main-home-panel .flow-summary-card {
+  grid-area: detail;
+  min-width: 0;
+  max-width: 380px;
+}
+
+.main-home-panel .today-reminder-card {
+  grid-area: reminder;
+  width: 100%;
+  min-width: 0;
+  max-width: 380px;
+  max-height: 390px;
+  overflow: hidden;
+}
+
+.main-home-panel .calendar-home-card {
+  grid-area: calendar;
+  min-width: 0;
+  width: 100%;
+}
+
+.main-home-panel .date-management-card {
+  grid-area: date;
+  min-width: 0;
+}
+
+.main-home-panel .content-editor-card {
+  display: none;
+}
+
+.today-reminder-card .reminder-slide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.today-reminder-card .reminder-slide .content-thumbnail {
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  max-height: 132px;
+  min-height: 0;
+  object-fit: cover;
+}
+
+.today-reminder-card .reminder-slide .content-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.today-reminder-card .reminder-slide > div {
+  min-width: 0;
+}
+
+.today-reminder-card .reminder-slide p,
+.today-reminder-card .reminder-slide strong,
+.today-reminder-card .reminder-reason {
+  min-width: 0;
+}
+
+.main-home-panel .calendar-grid {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.main-home-panel .calendar-cell {
+  min-width: 0;
+  min-height: clamp(96px, 8.5vw, 126px);
+}
+
+@media (max-width: 1024px) {
+  .main-home-panel .section-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "cards"
+      "detail"
+      "reminder"
+      "calendar"
+      "date";
+  }
+
+  .main-home-panel .judgement-card-grid,
+  .main-home-panel .flow-summary-card,
+  .main-home-panel .today-reminder-card,
+  .main-home-panel .calendar-home-card,
+  .main-home-panel .date-management-card {
+    max-width: none;
+  }
+
+  .main-home-panel .today-reminder-card {
+    max-height: 420px;
+  }
+}
+
+/* Main 3-zone layout: top, body grid, bottom reminder */
+.main-home-panel .section-grid {
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  grid-template-areas:
+    "cards calendar"
+    "detail calendar"
+    "reminder reminder"
+    "date date";
+  gap: clamp(20px, 2vw, 32px);
+}
+
+.main-home-panel .judgement-card-grid,
+.main-home-panel .flow-summary-card {
+  max-width: 360px;
+}
+
+.main-home-panel .calendar-home-card {
+  grid-area: calendar;
+  min-width: 0;
+  align-self: stretch;
+}
+
+.main-home-panel .today-reminder-card {
+  grid-area: reminder;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  margin-top: 0;
+  overflow: hidden;
+}
+
+.main-home-panel .today-reminder-card .card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide {
+  display: grid;
+  grid-template-columns: clamp(180px, 18vw, 240px) minmax(0, 1fr);
+  grid-template-areas:
+    "media body"
+    "media controls"
+    "media dots";
+  gap: 12px 18px;
+  align-items: start;
+}
+
+.main-home-panel .today-reminder-card .content-thumbnail {
+  grid-area: media;
+  width: 100%;
+  height: clamp(130px, 12vw, 160px);
+  max-height: 160px;
+  aspect-ratio: 4 / 3;
+  border-radius: 22px;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide > div:nth-child(2) {
+  grid-area: body;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide strong {
+  font-size: 16px;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide p {
+  max-width: 860px;
+  -webkit-line-clamp: 2;
+}
+
+.main-home-panel .today-reminder-card .reminder-reason {
+  -webkit-line-clamp: 1 !important;
+}
+
+.main-home-panel .today-reminder-card .reminder-controls {
+  grid-area: controls;
+  justify-content: flex-start;
+}
+
+.main-home-panel .today-reminder-card .reminder-dots {
+  grid-area: dots;
+  justify-content: flex-start;
+}
+
+@media (max-width: 1024px) {
+  .main-home-panel .section-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "cards"
+      "detail"
+      "calendar"
+      "reminder"
+      "date";
+  }
+
+  .main-home-panel .judgement-card-grid,
+  .main-home-panel .flow-summary-card {
+    max-width: none;
+  }
+
+  .main-home-panel .today-reminder-card .reminder-slide {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "media"
+      "body"
+      "controls"
+      "dots";
+  }
+
+  .main-home-panel .today-reminder-card .content-thumbnail {
+    height: 150px;
+    max-height: 150px;
+  }
+}
+
+/* Left-panel two-step reminder layout */
+.main-home-panel .section-grid {
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  grid-template-areas:
+    "cards calendar"
+    "detail calendar"
+    "reminder calendar"
+    "date date";
+  gap: clamp(20px, 2vw, 32px);
+}
+
+.main-home-panel .judgement-card-grid,
+.main-home-panel .flow-summary-card,
+.main-home-panel .today-reminder-card {
+  max-width: 360px;
+  min-width: 0;
+}
+
+.main-home-panel .calendar-home-card {
+  grid-area: calendar;
+  min-width: 0;
+}
+
+.main-home-panel .today-reminder-card {
+  grid-area: reminder;
+  display: grid !important;
+  width: 100%;
+  max-height: none;
+  gap: 10px;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.main-home-panel .today-reminder-card .card-heading,
+.main-home-panel .today-reminder-card .reminder-slide,
+.main-home-panel .today-reminder-card > .empty-copy {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--lg-border);
+  border-radius: 24px;
+  background: var(--lg-surface);
+  box-shadow: var(--lg-shadow);
+  backdrop-filter: blur(24px) saturate(1.18);
+}
+
+.main-home-panel .today-reminder-card .card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 96px;
+  margin: 0;
+  padding: 16px;
+}
+
+.main-home-panel .today-reminder-card .card-heading h3 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.main-home-panel .today-reminder-card .card-heading p {
+  max-width: 250px;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  -webkit-line-clamp: 2;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  max-height: 340px;
+  padding: 14px;
+  overflow: hidden;
+}
+
+.main-home-panel .today-reminder-card .content-thumbnail {
+  width: 100%;
+  max-width: 100%;
+  height: clamp(96px, 8vw, 120px);
+  max-height: 120px;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 18px;
+}
+
+.main-home-panel .today-reminder-card .content-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide > div:nth-child(2) {
+  min-width: 0;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide strong {
+  display: block;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide p {
+  margin: 4px 0;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.38;
+  -webkit-line-clamp: 2;
+}
+
+.main-home-panel .today-reminder-card .reminder-reason {
+  -webkit-line-clamp: 1 !important;
+}
+
+.main-home-panel .today-reminder-card .keyword-row {
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.main-home-panel .today-reminder-card .keyword-row b {
+  padding: 3px 6px;
+  font-size: 10px;
+}
+
+.main-home-panel .today-reminder-card .reminder-score {
+  margin-top: 4px;
+  padding: 5px 8px;
+  font-size: 11px;
+}
+
+.main-home-panel .today-reminder-card .reminder-controls,
+.main-home-panel .today-reminder-card .reminder-dots {
+  justify-content: flex-start;
+}
+
+.main-home-panel .today-reminder-card > .empty-copy {
+  margin: 0;
+  padding: 16px;
+}
+
+@media (max-width: 1024px) {
+  .main-home-panel .section-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "cards"
+      "detail"
+      "reminder"
+      "calendar"
+      "date";
+  }
+
+  .main-home-panel .judgement-card-grid,
+  .main-home-panel .flow-summary-card,
+  .main-home-panel .today-reminder-card {
+    max-width: none;
+  }
+
+  .main-home-panel .today-reminder-card .content-thumbnail {
+    height: 120px;
+  }
+}
+
+/* Main layout tokens and alignment rules */
+:root {
+  --app-page-max: 1480px;
+  --app-page-gutter: 48px;
+  --main-grid-gap: 28px;
+  --side-panel-min: 300px;
+  --side-panel-max: 360px;
+  --card-radius: 24px;
+  --card-padding: 16px;
+  --card-gap: 12px;
+  --calendar-grid-gap: 10px;
+  --calendar-cell-min-h: 124px;
+  --calendar-cell-padding-x: 16px;
+  --calendar-cell-padding-y: 14px;
+  --calendar-date-size: 13px;
+  --calendar-date-line-height: 18px;
+  --calendar-badge-gap: 8px;
+  --calendar-badge-row-gap: 6px;
+  --calendar-badge-height: 24px;
+  --reminder-thumb-h: 96px;
+  --reminder-header-thumb: 72px;
+}
+
+.main-home-panel {
+  width: min(var(--app-page-max), calc(100% - var(--app-page-gutter)));
+}
+
+.main-home-panel .section-grid {
+  grid-template-columns: minmax(var(--side-panel-min), var(--side-panel-max)) minmax(0, 1fr);
+  gap: var(--main-grid-gap);
+}
+
+.main-home-panel .judgement-card-grid {
+  gap: var(--card-gap);
+}
+
+.main-home-panel .judgement-card-grid,
+.main-home-panel .flow-summary-card,
+.main-home-panel .today-reminder-card {
+  max-width: var(--side-panel-max);
+}
+
+.main-home-panel .flow-summary-card,
+.main-home-panel .today-reminder-card .card-heading,
+.main-home-panel .today-reminder-card .reminder-slide,
+.main-home-panel .today-reminder-card > .empty-copy {
+  border-radius: var(--card-radius);
+}
+
+.main-home-panel .calendar-grid {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--calendar-grid-gap);
+}
+
+.main-home-panel .calendar-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: var(--calendar-cell-min-h);
+  padding: var(--calendar-cell-padding-y) var(--calendar-cell-padding-x);
+}
+
+.main-home-panel .calendar-day {
+  flex: 0 0 var(--calendar-date-line-height);
+  height: var(--calendar-date-line-height);
+  margin: 0;
+  font-size: var(--calendar-date-size);
+  line-height: var(--calendar-date-line-height);
+}
+
+.calendar-badge-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  min-width: 0;
+  margin-top: var(--calendar-badge-gap);
+  gap: var(--calendar-badge-row-gap);
+}
+
+.main-home-panel .calendar-content-card,
+.main-home-panel .calendar-recommendation-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--calendar-badge-height);
+  max-width: 100%;
+  margin-top: 0;
+  overflow: hidden;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.main-home-panel .today-reminder-card {
+  gap: var(--card-gap);
+}
+
+.main-home-panel .today-reminder-card .reminder-summary-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--reminder-header-thumb);
+  gap: 12px;
+  align-items: center;
+  min-height: 0;
+  padding: var(--card-padding);
+}
+
+.reminder-summary-copy {
+  min-width: 0;
+}
+
+.reminder-summary-copy .badge {
+  margin-top: 8px;
+}
+
+.reminder-summary-thumb {
+  display: grid;
+  place-items: center;
+  width: var(--reminder-header-thumb);
+  height: var(--reminder-header-thumb);
+  overflow: hidden;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--lg-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.reminder-summary-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide {
+  max-height: 320px;
+  padding: var(--card-padding);
+}
+
+.main-home-panel .today-reminder-card .content-thumbnail {
+  height: var(--reminder-thumb-h);
+  max-height: var(--reminder-thumb-h);
+}
+
+@media (max-width: 1024px) {
+  .main-home-panel {
+    width: min(900px, calc(100% - 32px));
+  }
+
+  .main-home-panel .judgement-card-grid,
+  .main-home-panel .flow-summary-card,
+  .main-home-panel .today-reminder-card {
+    max-width: none;
+  }
+}

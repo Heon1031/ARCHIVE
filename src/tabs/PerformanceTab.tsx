@@ -357,7 +357,7 @@ export function PerformanceTab({ accounts, contents, insights, accountFilter }: 
   );
 
   return (
-    <section className="tab-panel" aria-label="성과 탭">
+    <section className="tab-panel performance-panel" aria-label="성과 탭">
       <div className="settings-header">
         <div>
           <h2>성과</h2>
@@ -372,24 +372,6 @@ export function PerformanceTab({ accounts, contents, insights, accountFilter }: 
       </div>
 
       <div className="section-grid">
-        <article className="panel-card panel-card--wide performance-command-card">
-          <div className="card-heading">
-            <div>
-              <h3>다음 콘텐츠 판단</h3>
-              <p>숫자를 원본 그대로 보기보다, 다시 쓸 소재와 개선할 방향을 먼저 정리합니다.</p>
-            </div>
-            <span className="badge">관리 요약</span>
-          </div>
-          <div className="management-metric-grid">
-            <MetricTextCard label="총 인사이트" value={syncedInsights.length} />
-            <MetricTextCard label="평균 반응률" value={formatPercent(averageEngagementRate)} />
-            <MetricTextCard label="평균 저장률" value={formatPercent(averageSaveRate)} />
-            <MetricTextCard label="좋은 주제" value={bestTopic} />
-            <MetricTextCard label="좋은 형식" value={bestFormat} />
-            <MetricTextCard label="다시 살릴 글" value={reviveCandidates.length} />
-          </div>
-        </article>
-
         <article className="panel-card panel-card--wide performance-detail-card">
           <h3>전체 요약</h3>
           <div className="metric-grid">
@@ -455,35 +437,6 @@ export function PerformanceTab({ accounts, contents, insights, accountFilter }: 
             <PerformanceGroup title="형식별 평균 반응" rows={formatPerformance} />
             <PerformanceGroup title="주제별 평균 반응" rows={topicPerformance} />
             <PerformanceGroup title="키워드별 평균 반응" rows={keywordPerformance} />
-          </div>
-          <div className="performance-management-grid">
-            <ManagementPanel
-              title="다시 살릴 만한 콘텐츠"
-              emptyText="아직 다시 꺼내볼 만큼 오래된 고반응 콘텐츠가 없습니다."
-              rows={reviveCandidates.map((row) => ({
-                title: row.content.title,
-                description: "반응이 좋았고 시간이 지나 다시 변주하기 좋습니다.",
-                meta: `${row.account?.displayName ?? "계정 없음"} · 점수 ${row.score}`,
-              }))}
-            />
-            <ManagementPanel
-              title="개선해볼 콘텐츠"
-              emptyText="개선 후보가 아직 뚜렷하지 않습니다."
-              rows={improveCandidates.map((row) => ({
-                title: row.content.title,
-                description: "도달 대비 반응이 낮습니다. 메시지를 더 선명하게 다듬어볼 수 있습니다.",
-                meta: `${row.account?.displayName ?? "계정 없음"} · 반응률 ${formatPercent(row.engagementRate)}`,
-              }))}
-            />
-            <ManagementPanel
-              title="다음 콘텐츠 방향"
-              emptyText="추천을 만들 데이터가 아직 부족합니다."
-              rows={managementSuggestions.map((suggestion) => ({
-                title: suggestion,
-                description: "성과 데이터 기반 규칙 추천",
-                meta: "다음 기획 후보",
-              }))}
-            />
           </div>
         </article>
 
