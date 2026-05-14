@@ -494,6 +494,58 @@ function getLatestInsight(content: ContentItem, insights: InsightRecord[]) {
     .sort((first, second) => new Date(second.measuredAt).getTime() - new Date(first.measuredAt).getTime())[0];
 }
 
+function getImproveMetricLabel(insight?: InsightRecord) {
+  if (!insight) {
+    return "성과 기록 없음";
+  }
+
+  if (!insight.saves) {
+    return "저장 낮음";
+  }
+
+  if (!(insight.shares ?? insight.reposts)) {
+    return "공유 낮음";
+  }
+
+  if (!(insight.comments ?? insight.replies)) {
+    return "댓글 낮음";
+  }
+
+  return "반응 낮음";
+}
+
+function getImproveReason(content: ContentItem, insight?: InsightRecord) {
+  if (!insight) {
+    return "성과 기록을 먼저 확인하세요.";
+  }
+
+  if (!insight.saves) {
+    return "저장으로 이어지는 문장이 약합니다.";
+  }
+
+  if (!(insight.shares ?? insight.reposts)) {
+    return "공유할 만한 핵심 문장이 약합니다.";
+  }
+
+  if (!(insight.comments ?? insight.replies)) {
+    return "질문형 첫 문장으로 반응을 열어보세요.";
+  }
+
+  return `${normalizeContentType(content)} 반복 피로를 줄여보세요.`;
+}
+
+function getKeywordUsage(contents: ContentItem[]) {
+  const counts = contents.flatMap(getContentKeywords).reduce<Record<string, number>>((accumulator, keyword) => {
+    accumulator[keyword] = (accumulator[keyword] ?? 0) + 1;
+    return accumulator;
+  }, {});
+
+  return Object.entries(counts)
+    .map(([keyword, count]) => ({ keyword, count }))
+    .sort((first, second) => second.count - first.count || first.keyword.localeCompare(second.keyword))
+    .slice(0, 6);
+}
+
 function getRateLabel(numerator: number | undefined, denominator: number | undefined) {
   if (!denominator || denominator <= 0 || numerator === undefined) {
     return "-";
@@ -1002,6 +1054,8 @@ export function MainTab({
   const [selectedDetailMode, setSelectedDetailMode] = useState<"post" | "improve" | null>(null);
   const [reminderModalContentId, setReminderModalContentId] = useState<string | null>(null);
   const [multiUseModalContentId, setMultiUseModalContentId] = useState<string | null>(null);
+  const [isImproveModalOpen, setIsImproveModalOpen] = useState(false);
+  const [isKeywordModalOpen, setIsKeywordModalOpen] = useState(false);
   const [activeJudgement, setActiveJudgement] = useState<JudgementKey>("today");
   const [selectedDecision, setSelectedDecision] = useState<DateRecommendation | null>(null);
   const [selectedDecisionList, setSelectedDecisionList] = useState<DateRecommendation[]>([]);
@@ -1106,12 +1160,38 @@ export function MainTab({
       ? scoredFilteredContents.reduce((total, content) => total + getContentScore(content, insights), 0) /
         scoredFilteredContents.length
       : 0;
-  const improveTarget = scoredFilteredContents
-    .filter((content) => getContentScore(content, insights) < averageFilteredScore)
-    .sort((first, second) => getContentScore(first, insights) - getContentScore(second, insights))[0];
+  const improveCandidates = scoredFilteredContents
+    .map((content) => {
+      const insight = getLatestInsight(content, insights);
+      const score = getContentScore(content, insights);
+
+      return {
+        content,
+        insight,
+        score,
+        metric: getImproveMetricLabel(insight),
+        reason: getImproveReason(content, insight),
+      };
+    })
+    .filter((candidate) => candidate.score < averageFilteredScore)
+    .sort((first, second) => first.score - second.score)
+    .slice(0, 6);
+  const improveTarget = improveCandidates[0]?.content;
   const todayDirectionValue = todayItems.length > 0 ? "점검" : oldHighScoreContent ? "재활용" : "유지";
   const todayDirectionSummary =
     todayItems.length > 0 ? "올린 글의 반응을 확인하세요." : "새 글보다 흐름 점검이 좋습니다.";
+  const keywordUsage = getKeywordUsage(monthContents);
+  const maxKeywordUsage = Math.max(...keywordUsage.map((item) => item.count), 1);
+  const recommendedKeywordUseCount = monthContents.filter((content) => {
+    return (content.topic ?? "기타") === missingTopic || getContentKeywords(content).includes(missingTopic);
+  }).length;
+  const repeatedKeywords = recentKeywords.slice(0, 3);
+  const relatedKeywordContents = filteredContents
+    .filter((content) => {
+      return (content.topic ?? "기타") === missingTopic || getContentKeywords(content).includes(missingTopic);
+    })
+    .sort((first, second) => new Date(getContentDate(second)).getTime() - new Date(getContentDate(first)).getTime())
+    .slice(0, 3);
   const keywordActionLine = `${missingTopic}을 짧은 장면으로 써보세요.`;
   const keywordSummary = monthContents.some((content) => (content.topic ?? "기타") === missingTopic)
     ? `${missingTopic}을 다른 감정선으로 분산하세요.`
@@ -1144,7 +1224,7 @@ export function MainTab({
     {
       key: "improve",
       title: "개선 후보",
-      value: improveTarget ? "1" : "0",
+      value: improveCandidates.length,
       summary: improveSummary,
       detail: improveTarget
         ? `${normalizeContentType(improveTarget)} 형식의 첫 문장을 더 선명하게 다듬어보세요.`
@@ -1355,9 +1435,12 @@ export function MainTab({
               type="button"
               onClick={() => {
                 setActiveJudgement(card.key);
-                if (card.key === "improve" && improveTarget) {
-                  setSelectedContentId(improveTarget.id);
-                  setSelectedDetailMode("improve");
+                if (card.key === "improve") {
+                  setIsImproveModalOpen(true);
+                } else if (card.key === "recommend") {
+                  setIsKeywordModalOpen(true);
+                  setSelectedContentId(null);
+                  setSelectedDetailMode(null);
                 } else {
                   setSelectedContentId(null);
                   setSelectedDetailMode(null);
@@ -2251,6 +2334,138 @@ export function MainTab({
                   </div>
                 </div>
               </div>
+            </div>
+          </article>
+        </div>
+      )}
+      {isImproveModalOpen && (
+        <div className="modal-backdrop reminder-modal-backdrop" role="dialog" aria-modal="true">
+          <article className="panel-card reminder-modal-card insight-modal-card">
+            <div className="card-heading">
+              <div>
+                <h3>개선 후보 목록</h3>
+                <p>평균보다 낮은 반응과 저장/공유 흐름을 함께 봅니다.</p>
+              </div>
+              <button className="secondary-button" type="button" onClick={() => setIsImproveModalOpen(false)}>
+                닫기
+              </button>
+            </div>
+            <div className="criteria-list">
+              <span>평균보다 반응 점수가 낮음</span>
+              <span>저장/공유가 낮음</span>
+              <span>같은 형식 반복 가능성</span>
+              <span>첫 문장 개선 여지</span>
+            </div>
+            {improveCandidates.length > 0 ? (
+              <div className="insight-modal-list">
+                {improveCandidates.map((candidate) => (
+                  <button
+                    className="insight-list-button"
+                    key={candidate.content.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedContentId(candidate.content.id);
+                      setSelectedDetailMode("improve");
+                      setSelectedDecision(null);
+                      setSelectedDecisionList([]);
+                      setActiveJudgement("improve");
+                      setSelectedDate(getContentDate(candidate.content) || selectedDate);
+                      setIsImproveModalOpen(false);
+                    }}
+                  >
+                    <div>
+                      <strong>{candidate.content.title}</strong>
+                      <p>{candidate.reason}</p>
+                    </div>
+                    <div className="keyword-row">
+                      <b>{candidate.content.publishedDate ?? candidate.content.plannedDate ?? "날짜 없음"}</b>
+                      <b>{platformLabels[candidate.content.platform]}</b>
+                      <b>{normalizeContentType(candidate.content)}</b>
+                      <b>{candidate.metric}</b>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="empty-copy">현재 개선 후보가 없습니다. 성과 기록이 쌓이면 다시 확인하세요.</p>
+            )}
+          </article>
+        </div>
+      )}
+      {isKeywordModalOpen && (
+        <div className="modal-backdrop reminder-modal-backdrop" role="dialog" aria-modal="true">
+          <article className="panel-card reminder-modal-card insight-modal-card">
+            <div className="card-heading">
+              <div>
+                <h3>추천 키워드 근거</h3>
+                <p>{keywordActionLine}</p>
+              </div>
+              <button className="secondary-button" type="button" onClick={() => setIsKeywordModalOpen(false)}>
+                닫기
+              </button>
+            </div>
+            <div className="decision-detail-grid">
+              <div className="operation-judgement-card">
+                <span>추천 키워드</span>
+                <strong>{missingTopic}</strong>
+                <p>오늘 쓸 감정선입니다.</p>
+              </div>
+              <div className="operation-judgement-card">
+                <span>이번 달 사용</span>
+                <strong>{recommendedKeywordUseCount}회</strong>
+                <p>월간 콘텐츠 기준입니다.</p>
+              </div>
+              <div className="operation-judgement-card">
+                <span>최근 반복</span>
+                <strong>{repeatedKeywords.join(" · ") || "없음"}</strong>
+                <p>분산할 키워드입니다.</p>
+              </div>
+              <div className="operation-judgement-card">
+                <span>부족한 키워드</span>
+                <strong>{missingTopic}</strong>
+                <p>이번 주 보강 후보입니다.</p>
+              </div>
+            </div>
+            {keywordUsage.length > 0 ? (
+              <div className="keyword-distribution">
+                {keywordUsage.map((item) => (
+                  <div className={`keyword-bar-row${item.keyword === missingTopic ? " is-recommended" : ""}`} key={item.keyword}>
+                    <span>{item.keyword}</span>
+                    <div className="keyword-bar-track" aria-hidden="true">
+                      <i style={{ width: `${Math.max(8, (item.count / maxKeywordUsage) * 100)}%` }} />
+                    </div>
+                    <b>{item.count}</b>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="empty-copy">이번 달 키워드 데이터가 아직 없습니다.</p>
+            )}
+            <div className="related-content-list">
+              <span>관련 과거 게시물</span>
+              {relatedKeywordContents.length > 0 ? (
+                relatedKeywordContents.map((content) => (
+                  <button
+                    className="date-content-card"
+                    key={content.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedContentId(content.id);
+                      setSelectedDetailMode("post");
+                      setSelectedDecision(null);
+                      setSelectedDecisionList([]);
+                      setIsKeywordModalOpen(false);
+                    }}
+                  >
+                    <strong>{content.title}</strong>
+                    <p>
+                      {content.publishedDate ?? content.plannedDate ?? "날짜 없음"} · {normalizeContentType(content)}
+                    </p>
+                  </button>
+                ))
+              ) : (
+                <p className="empty-copy">관련 과거 게시물이 아직 없습니다.</p>
+              )}
             </div>
           </article>
         </div>
