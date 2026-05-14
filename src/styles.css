@@ -4837,6 +4837,143 @@ textarea {
   }
 }
 
+/* Step 3: calendar badge clarity and clickable states */
+.main-home-panel .calendar-cell {
+  cursor: pointer;
+}
+
+.main-home-panel .calendar-cell--blank {
+  cursor: default;
+}
+
+.main-home-panel .calendar-cell:not(.calendar-cell--blank):hover {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 14px 34px rgba(31, 41, 55, 0.08);
+  transform: translateY(-1px);
+}
+
+.main-home-panel .calendar-badge-stack {
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.main-home-panel .calendar-content-card,
+.main-home-panel .calendar-recommendation-chip {
+  min-height: 24px;
+  max-width: 100%;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.main-home-panel .calendar-content-card:hover,
+.main-home-panel .calendar-content-card:focus-visible,
+.main-home-panel .calendar-recommendation-chip:hover,
+.main-home-panel .calendar-recommendation-chip:focus-visible {
+  box-shadow: 0 10px 24px rgba(31, 41, 55, 0.1);
+  transform: translateY(-1px);
+}
+
+.main-home-panel .calendar-content-card {
+  width: fit-content;
+  min-width: 0;
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: #4338ca;
+  background: rgba(237, 233, 254, 0.92);
+}
+
+.main-home-panel .calendar-content-card span {
+  display: inline;
+  overflow: hidden;
+  max-width: 100%;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.main-home-panel .calendar-content-card--image {
+  color: #047857;
+  background: rgba(209, 250, 229, 0.9);
+}
+
+.main-home-panel .calendar-content-card--reel {
+  color: #be185d;
+  background: rgba(252, 231, 243, 0.92);
+}
+
+.main-home-panel .calendar-content-card--carousel {
+  color: #0e7490;
+  background: rgba(207, 250, 254, 0.9);
+}
+
+.main-home-panel .calendar-content-card--long {
+  color: #1d4ed8;
+  background: rgba(219, 234, 254, 0.92);
+}
+
+.main-home-panel .calendar-content-card--text,
+.main-home-panel .calendar-content-card--short {
+  color: #4f46e5;
+  background: rgba(238, 242, 255, 0.94);
+}
+
+.main-home-panel .calendar-recommendation-chip {
+  border: 0;
+  padding: 5px 9px;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.main-home-panel .calendar-recommendation-chip--짧은글,
+.main-home-panel .calendar-recommendation-chip--추천 {
+  color: #5b21b6;
+  background: rgba(237, 233, 254, 0.92);
+}
+
+.main-home-panel .calendar-recommendation-chip--긴글 {
+  color: #1d4ed8;
+  background: rgba(219, 234, 254, 0.92);
+}
+
+.main-home-panel .calendar-recommendation-chip--이미지 {
+  color: #047857;
+  background: rgba(209, 250, 229, 0.9);
+}
+
+.main-home-panel .calendar-recommendation-chip--릴스 {
+  color: #be185d;
+  background: rgba(252, 231, 243, 0.92);
+}
+
+.main-home-panel .calendar-recommendation-chip--캐러셀 {
+  color: #0e7490;
+  background: rgba(207, 250, 254, 0.9);
+}
+
+.main-home-panel .calendar-recommendation-chip--재활용 {
+  color: #166534;
+  background: rgba(220, 252, 231, 0.9);
+}
+
+.main-home-panel .calendar-recommendation-chip--휴식 {
+  color: #64748b;
+  background: rgba(241, 245, 249, 0.95);
+}
+
+.main-home-panel .calendar-recommendation-chip--selected,
+.main-home-panel .calendar-content-card--selected {
+  outline: 2px solid rgba(255, 183, 77, 0.9);
+  outline-offset: 2px;
+}
+
 /* Main 2.5: improve candidates and keyword evidence modals */
 .insight-modal-card {
   display: grid;

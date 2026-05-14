@@ -805,7 +805,7 @@ function getCalendarBadgeLabel(recommendation: DateRecommendation) {
   }
 
   if (rawLabel.toLowerCase().includes("threads")) {
-    return "Threads";
+    return "짧은글";
   }
 
   if (rawLabel.includes("긴글") || rawLabel.includes("긴 글") || rawLabel.includes("에세이")) {
@@ -813,6 +813,64 @@ function getCalendarBadgeLabel(recommendation: DateRecommendation) {
   }
 
   return rawLabel || "짧은글";
+}
+
+function getCalendarContentBadgeLabel(content: ContentItem) {
+  const platformLabel =
+    content.platform === "instagram"
+      ? "IG"
+      : content.platform === "threads"
+        ? "TH"
+        : platformLabels[content.platform];
+  const contentType = normalizeContentType(content);
+
+  if (content.platform === "threads") {
+    return `${platformLabel} · ${contentType.includes("긴") || content.format === "article" ? "긴글" : "짧은글"}`;
+  }
+
+  if (contentType.includes("캐러셀")) {
+    return `${platformLabel} · 캐러셀`;
+  }
+
+  if (contentType.includes("릴스") || contentType.includes("영상")) {
+    return `${platformLabel} · 릴스`;
+  }
+
+  if (contentType.includes("이미지") || contentType.includes("사진")) {
+    return `${platformLabel} · 이미지`;
+  }
+
+  if (contentType.includes("긴") || content.format === "article") {
+    return `${platformLabel} · 긴글`;
+  }
+
+  return `${platformLabel} · 짧은글`;
+}
+
+function getCalendarContentTone(content: ContentItem) {
+  const contentType = normalizeContentType(content);
+
+  if (content.platform === "threads") {
+    return "text";
+  }
+
+  if (contentType.includes("캐러셀")) {
+    return "carousel";
+  }
+
+  if (contentType.includes("릴스") || contentType.includes("영상")) {
+    return "reel";
+  }
+
+  if (contentType.includes("이미지") || contentType.includes("사진")) {
+    return "image";
+  }
+
+  if (contentType.includes("긴") || content.format === "article") {
+    return "long";
+  }
+
+  return "short";
 }
 
 function dedupeCalendarRecommendations(recommendations: DateRecommendation[]) {
@@ -1882,7 +1940,7 @@ export function MainTab({
                     })()}
                     {dayContents.map((content) => (
                       <button
-                        className={`calendar-content-card${
+                        className={`calendar-content-card calendar-content-card--${getCalendarContentTone(content)}${
                           selectedContentId === content.id ? " calendar-content-card--selected" : ""
                         }`}
                         key={content.id}
@@ -1896,13 +1954,7 @@ export function MainTab({
                           setSelectedDecisionList([]);
                         }}
                       >
-                        <span>
-                          {content.platform === "instagram"
-                            ? "IG"
-                            : content.platform === "threads"
-                              ? "TH"
-                              : platformLabels[content.platform]}
-                        </span>
+                        <span>{getCalendarContentBadgeLabel(content)}</span>
                         <strong>{content.title}</strong>
                         <small>
                           {accountMap.get(content.accountId)?.displayName ?? "계정 없음"} ·{" "}
