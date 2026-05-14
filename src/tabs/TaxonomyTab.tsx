@@ -3,6 +3,7 @@ import {
   defaultContentTopics,
   defaultContentTypes,
   defaultManagedKeywords,
+  defaultRecommendationTagSuggestions,
   defaultRecommendationTags,
   defaultStopWords,
   loadTaxonomySettings,
@@ -53,21 +54,21 @@ const dictionarySections: DictionarySection[] = [
 ];
 
 const contentTypeDescriptions = [
-  ["짧은글", "1장짜리 짧은 산문/문장 중심"],
-  ["긴글", "2장 이상 또는 긴 산문/에세이"],
-  ["산문", "정서와 장면 중심의 글"],
-  ["에세이", "경험과 생각을 길게 풀어낸 글"],
-  ["사진+글", "이미지와 글이 함께 의미를 만드는 게시물"],
-  ["이미지만", "텍스트가 거의 없는 게시물"],
-  ["이미지+캡션", "이미지가 있고 캡션이 핵심인 게시물"],
-  ["캐러셀", "여러 장 묶음"],
-  ["릴스/영상", "영상 중심"],
-  ["Threads", "Threads 게시물"],
-  ["질문형", "댓글과 반응을 유도하는 질문 중심"],
-  ["고백형", "개인적인 고백이나 선언 중심"],
-  ["회고형", "과거 경험을 돌아보는 형식"],
-  ["공지형", "소식이나 안내 중심"],
+  ["짧은글", "짧은 문장이나 산문 중심 형식"],
+  ["긴글", "생각과 경험을 길게 풀어낸 형식"],
+  ["이미지", "이미지 자체가 중심인 게시물"],
+  ["이미지_캡션", "이미지 한 장과 본문 글이 함께 있는 형식"],
+  ["글이미지", "글 자체가 이미지 안에 들어간 형식"],
+  ["캐러셀", "여러 장의 이미지 흐름으로 읽히는 형식"],
+  ["릴스", "짧은 영상이나 장면 중심 형식"],
+  ["Threads", "Threads에 맞춘 짧은 글 흐름"],
+  ["재활용", "과거 콘텐츠를 다시 활용하는 형식"],
+  ["멀티유즈", "하나의 원본을 다른 플랫폼/형식으로 변환"],
+  ["휴식", "새 콘텐츠보다 점검/정리/회복이 필요한 날"],
+  ["개선", "낮은 지표를 바탕으로 보완이 필요한 콘텐츠"],
 ];
+
+const recommendationTagEntries = Object.entries(defaultRecommendationTagSuggestions);
 
 function normalizeDictionary(values: string[], keepEtc = true) {
   const nextValues = Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
@@ -198,6 +199,23 @@ export function TaxonomyTab() {
             <div className="taxonomy-description-item" key={title}>
               <strong>{title}</strong>
               <span>{description}</span>
+            </div>
+          ))}
+        </div>
+      </article>
+
+      <article className="panel-card panel-card--wide">
+        <div className="section-heading-row">
+          <div>
+            <p className="eyebrow">추천 태그</p>
+            <h3>키워드별 추천 태그 기준</h3>
+          </div>
+        </div>
+        <div className="taxonomy-description-list">
+          {recommendationTagEntries.map(([keyword, tags]) => (
+            <div className="taxonomy-description-item" key={keyword}>
+              <strong>{keyword}</strong>
+              <span>{tags.slice(0, 5).join(" · ")}</span>
             </div>
           ))}
         </div>
