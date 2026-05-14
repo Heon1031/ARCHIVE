@@ -4837,6 +4837,49 @@ textarea {
   }
 }
 
+/* Step 3.1: compact two-line upload badges */
+.main-home-panel .calendar-content-card {
+  min-width: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 14px;
+  padding: 5px 7px;
+  white-space: normal;
+}
+
+.main-home-panel .calendar-content-card .calendar-content-badge-label {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  line-height: 1.05;
+  white-space: normal;
+}
+
+.main-home-panel .calendar-content-card .calendar-content-badge-label b,
+.main-home-panel .calendar-content-card .calendar-content-badge-label em {
+  display: block;
+  overflow: visible;
+  max-width: 44px;
+  color: inherit;
+  font-style: normal;
+  font-weight: 900;
+  text-align: center;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.main-home-panel .calendar-content-card .calendar-content-badge-label b {
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.main-home-panel .calendar-content-card .calendar-content-badge-label em {
+  font-size: 10px;
+}
+
+.main-home-panel .calendar-content-card--selected {
+  border-color: rgba(255, 183, 77, 0.9);
+}
+
 /* Step 3: calendar badge clarity and clickable states */
 .main-home-panel .calendar-cell {
   cursor: pointer;

@@ -546,6 +546,85 @@ function getKeywordUsage(contents: ContentItem[]) {
     .slice(0, 6);
 }
 
+function getKeywordCount(contents: ContentItem[], keyword: string) {
+  return contents.filter((content) => (content.topic ?? "기타") === keyword || getContentKeywords(content).includes(keyword)).length;
+}
+
+function getWeekKey(dateKey: string) {
+  const date = new Date(dateKey);
+  const weekStart = new Date(date);
+  weekStart.setDate(date.getDate() - date.getDay());
+  return getDateKey(weekStart);
+}
+
+function getKeywordPortfolioRecommendation(contents: ContentItem[], recommendationDates: string[], todayKey: string) {
+  const keywordPool = Array.from(
+    new Set([
+      ...defaultTopics,
+      ...contents.map((content) => content.topic ?? "").filter(Boolean),
+      ...contents.flatMap(getContentKeywords),
+    ]),
+  )
+    .filter((keyword) => keyword && keyword !== "기타")
+    .slice(0, 12);
+  const candidates = keywordPool.length > 0 ? keywordPool : ["가족", "관계", "일상"];
+  const recentKeywords = [...contents]
+    .sort((first, second) => new Date(getContentDate(second)).getTime() - new Date(getContentDate(first)).getTime())
+    .slice(0, 3)
+    .flatMap(getContentKeywords);
+  const currentWeekKey = getWeekKey(todayKey);
+  const weekKeywordCounts = candidates.reduce<Record<string, number>>((accumulator, keyword) => {
+    accumulator[keyword] = contents.filter((content) => {
+      const contentDate = getContentDate(content);
+      return (
+        contentDate &&
+        getWeekKey(contentDate) === currentWeekKey &&
+        ((content.topic ?? "기타") === keyword || getContentKeywords(content).includes(keyword))
+      );
+    }).length;
+    return accumulator;
+  }, {});
+  const projectedAdds = candidates.reduce<Record<string, number>>((accumulator, keyword) => {
+    accumulator[keyword] = 0;
+    return accumulator;
+  }, {});
+  const rotationOffset = new Date(todayKey).getDate() % Math.max(candidates.length, 1);
+
+  recommendationDates.forEach((_, index) => {
+    const rotatedKeyword = candidates[(index + rotationOffset) % candidates.length];
+    projectedAdds[rotatedKeyword] = (projectedAdds[rotatedKeyword] ?? 0) + 1;
+  });
+
+  const ranked = candidates
+    .map((keyword) => {
+      const currentCount = getKeywordCount(contents, keyword);
+      const projectedCount = currentCount + (projectedAdds[keyword] ?? 0);
+      const recentPenalty = recentKeywords.filter((recentKeyword) => recentKeyword === keyword).length * 3;
+      const weekPenalty = (weekKeywordCounts[keyword] ?? 0) * 4;
+
+      return {
+        keyword,
+        currentCount,
+        projectedCount,
+        isRepeatedThisWeek: (weekKeywordCounts[keyword] ?? 0) > 0,
+        score: projectedCount * 5 + recentPenalty + weekPenalty,
+      };
+    })
+    .sort((first, second) => first.score - second.score || first.keyword.localeCompare(second.keyword));
+  const selected = ranked[0] ?? {
+    keyword: "가족",
+    currentCount: 0,
+    projectedCount: recommendationDates.length > 0 ? 1 : 0,
+    isRepeatedThisWeek: false,
+    score: 0,
+  };
+
+  return {
+    ...selected,
+    alternatives: ranked.filter((item) => item.keyword !== selected.keyword).slice(0, 3),
+  };
+}
+
 function getRateLabel(numerator: number | undefined, denominator: number | undefined) {
   if (!denominator || denominator <= 0 || numerator === undefined) {
     return "-";
@@ -656,6 +735,11 @@ function getCalendarRecommendations(
     return contentTime >= weekStart.getTime() && contentTime <= weekEnd.getTime();
   });
   const weekFormats = weekContents.map(normalizeContentType);
+  const recentThreeDayContentCount = contents.filter((content) => {
+    const contentTime = new Date(getContentDate(content)).getTime();
+    const dayGap = Math.round((new Date(dateKey).getTime() - contentTime) / (1000 * 60 * 60 * 24));
+    return dayGap >= 1 && dayGap <= 3;
+  }).length;
   const scoredContents = contents.filter((content) => hasInsightRecord(content, insights));
   const averageScore =
     scoredContents.length > 0
@@ -665,6 +749,10 @@ function getCalendarRecommendations(
     .filter((content) => getContentScore(content, insights) < averageScore)
     .sort((first, second) => getContentScore(first, insights) - getContentScore(second, insights))[0];
   const recommendations: DateRecommendation[] = [];
+  const isFormatCrowdedThisWeek = (formatLabel: string) =>
+    weekFormats.filter((weekFormat) => weekFormat === formatLabel).length >= 2 ||
+    ((formatLabel === "긴글" || formatLabel === "캐러셀") && weekFormats.includes(formatLabel)) ||
+    (formatLabel === "릴스" && monthContentsForDate.some((content) => normalizeContentType(content) === "릴스"));
   const chooseFormat = () => {
     const available = targetFormats.filter((format) => {
       if (format.deficit <= 0 && monthlyLevel !== "low") {
@@ -675,22 +763,19 @@ function getCalendarRecommendations(
         return false;
       }
 
-      if (weekFormats.filter((weekFormat) => weekFormat === format.label).length >= 2) {
-        return false;
-      }
-
-      if ((format.label === "긴글" || format.label === "캐러셀") && weekFormats.includes(format.label)) {
-        return false;
-      }
-
-      if (format.label === "릴스" && monthContentsForDate.some((content) => normalizeContentType(content) === "릴스")) {
+      if (isFormatCrowdedThisWeek(format.label)) {
         return false;
       }
 
       return true;
     });
 
-    return available[dayOfMonth % Math.max(available.length, 1)] ?? targetFormats[0];
+    return (
+      available[dayOfMonth % Math.max(available.length, 1)] ??
+      targetFormats.find((format) => format.label !== repeatedFormat && !isFormatCrowdedThisWeek(format.label)) ??
+      targetFormats.find((format) => format.label !== "짧은글") ??
+      targetFormats[0]
+    );
   };
   const targetFormat = chooseFormat();
 
@@ -702,7 +787,10 @@ function getCalendarRecommendations(
       topic: missingTopic,
       format: formatLabel,
       basis: `월 ${monthCount}개 · ${formatLabel} 목표 대비 ${Math.max(targetFormat.deficit, 0)}개 부족`,
-      expectedEffect: "짧은글 반복을 줄이고 월간 콘텐츠 형식 비율을 고르게 맞춥니다.",
+      expectedEffect:
+        formatLabel === "짧은글"
+          ? "가벼운 글은 유지하되 같은 형식 반복은 줄입니다."
+          : `${formatLabel} 쪽으로 월간 형식 균형을 맞춥니다.`,
       caution: repeatedFormat
         ? `최근 ${repeatedFormat} 형식이 반복되어 같은 형식은 피하는 편이 좋습니다.`
         : "달력 셀을 채우기 위한 추천이 아니라 운영 균형 참고용입니다.",
@@ -710,17 +798,32 @@ function getCalendarRecommendations(
     });
   };
 
-  if (monthlyLevel === "overloaded" || (monthlyLevel === "active" && dayOfWeek === 0)) {
+  const shouldRecommendRest =
+    monthlyLevel === "overloaded" ||
+    (dayOfWeek === 0 &&
+      (monthlyLevel === "active" ||
+        recentThreeDayContentCount >= 2 ||
+        weekContents.length >= 2 ||
+        (monthlyLevel === "low" && monthCount >= 6 && dayOfMonth >= 24)));
+
+  if (shouldRecommendRest) {
     recommendations.push({
       type: "휴식",
       title: "휴식",
       reason:
         monthlyLevel === "overloaded"
           ? "월 23개 이상은 과다 가능성이 있어 새 글보다 휴식과 정리 중심으로 운영하는 편이 좋습니다."
-          : "적극 운영 구간이라 일부 빈 날짜는 새 글보다 성과 확인과 정리에 쓰는 편이 좋습니다.",
+          : "최근 게시 흐름이 있어 새 글보다 성과 확인과 정리에 쓰기 좋은 날입니다.",
       topic: "휴식",
       format: "리듬조정",
-      basis: monthlyLevel === "overloaded" ? "월 23개 이상 과다 가능성" : "월 17~22개 적극 운영",
+      basis:
+        monthlyLevel === "overloaded"
+          ? "월 23개 이상 과다 가능성"
+          : recentThreeDayContentCount >= 2
+            ? "최근 3일 내 게시 2개 이상"
+            : weekContents.length >= 2
+              ? "이번 주 게시 흐름 충분"
+              : "월 후반 리듬 점검",
       expectedEffect: "과한 반복을 줄이고 다음 콘텐츠의 밀도를 높입니다.",
       caution: "휴식 뱃지는 단독 판단입니다. 다른 추천과 함께 실행하지 않습니다.",
       tags: ["휴식", "리듬조정"],
@@ -825,26 +928,26 @@ function getCalendarContentBadgeLabel(content: ContentItem) {
   const contentType = normalizeContentType(content);
 
   if (content.platform === "threads") {
-    return `${platformLabel} · ${contentType.includes("긴") || content.format === "article" ? "긴글" : "짧은글"}`;
+    return { platform: platformLabel, format: contentType.includes("긴") || content.format === "article" ? "긴글" : "짧은글" };
   }
 
   if (contentType.includes("캐러셀")) {
-    return `${platformLabel} · 캐러셀`;
+    return { platform: platformLabel, format: "캐러셀" };
   }
 
   if (contentType.includes("릴스") || contentType.includes("영상")) {
-    return `${platformLabel} · 릴스`;
+    return { platform: platformLabel, format: "릴스" };
   }
 
   if (contentType.includes("이미지") || contentType.includes("사진")) {
-    return `${platformLabel} · 이미지`;
+    return { platform: platformLabel, format: "이미지" };
   }
 
   if (contentType.includes("긴") || content.format === "article") {
-    return `${platformLabel} · 긴글`;
+    return { platform: platformLabel, format: "긴글" };
   }
 
-  return `${platformLabel} · 짧은글`;
+  return { platform: platformLabel, format: "짧은글" };
 }
 
 function getCalendarContentTone(content: ContentItem) {
@@ -1066,6 +1169,61 @@ function getMultiUseDirection(content: ContentItem) {
   };
 }
 
+function getMultiUseProfile(content: ContentItem, contents: ContentItem[]) {
+  const contentType = normalizeContentType(content);
+  const target = getMultiUseDirection(content);
+  const contentKeywords = [...(content.topicKeywords ?? []), ...(content.customKeywords ?? [])];
+  const recentContents = contents.filter((candidate) => {
+    if (candidate.id === content.id) {
+      return false;
+    }
+
+    const contentDate = getContentDate(candidate);
+    if (!contentDate) {
+      return false;
+    }
+
+    const daysAgo = (Date.now() - new Date(contentDate).getTime()) / (1000 * 60 * 60 * 24);
+    return daysAgo >= 0 && daysAgo <= 14;
+  });
+  const hasRepeatedTopic = Boolean(
+    content.topic && recentContents.some((candidate) => candidate.topic === content.topic),
+  );
+  const hasRepeatedKeyword =
+    contentKeywords.length > 0 &&
+    recentContents.some((candidate) =>
+      [...(candidate.topicKeywords ?? []), ...(candidate.customKeywords ?? [])].some((keyword) =>
+        contentKeywords.includes(keyword),
+      ),
+    );
+  const hasRepeatedFormat = recentContents.some((candidate) => normalizeContentType(candidate) === contentType);
+  const hasSamePlatformNearby = recentContents.some((candidate) => candidate.platform === content.platform);
+  const hasRepetitionRisk = hasRepeatedTopic || hasRepeatedKeyword || (hasRepeatedFormat && hasSamePlatformNearby);
+  const reuseType =
+    hasRepetitionRisk && hasSamePlatformNearby
+      ? "반복 주의"
+      : target.platform !== platformLabels[content.platform] && ["캐러셀", "긴글", "에세이", "산문", "릴스/영상"].includes(contentType)
+        ? "강한 변형"
+        : target.platform !== platformLabels[content.platform]
+          ? "약한 변형"
+          : "확장 콘텐츠";
+  const reuseNote =
+    reuseType === "반복 주의"
+      ? "같은 주제나 형식이 가까운 시기에 반복됐습니다."
+      : reuseType === "강한 변형"
+        ? "같은 주제를 다른 구조와 형식으로 바꿉니다."
+        : reuseType === "약한 변형"
+          ? "말투와 길이를 플랫폼에 맞게 가볍게 바꿉니다."
+          : "과거 글의 소재를 새 맥락으로 넓힙니다.";
+
+  return {
+    reuseType,
+    reuseNote,
+    hasRepetitionRisk,
+    riskLabel: hasRepetitionRisk ? "반복 위험 있음" : "반복 위험 낮음",
+  };
+}
+
 function getMultiUseCandidates(contents: ContentItem[], insights: InsightRecord[]) {
   return contents
     .map((content) => {
@@ -1078,17 +1236,21 @@ function getMultiUseCandidates(contents: ContentItem[], insights: InsightRecord[
         content.format === "reel" ||
         ["긴글", "에세이", "산문", "이미지+캡션", "캐러셀", "릴스/영상"].includes(normalizeContentType(content));
       const direction = getMultiUseDirection(content);
-      const priority = score + (daysAgo >= 30 ? 20 : 0) + (reusableFormat ? 12 : 0);
+      const profile = getMultiUseProfile(content, contents);
+      const priority = score + (daysAgo >= 30 ? 20 : 0) + (reusableFormat ? 12 : 0) - (profile.hasRepetitionRisk ? 8 : 0);
 
       return {
         ...direction,
+        ...profile,
         content,
         score,
         priority,
         reason:
-          score > 0
-            ? "반응이 있는 게시물이라 다른 형식으로 다시 쓰기 좋습니다."
-            : "형식 변환 여지가 있어 원소스 멀티유즈 후보로 볼 수 있습니다.",
+          profile.hasRepetitionRisk
+            ? "그대로 반복하기보다 관점이나 형식을 바꾸는 편이 좋습니다."
+            : score > 0
+              ? "반응이 있는 게시물이라 다른 형식으로 다시 쓰기 좋습니다."
+              : "형식 변환 여지가 있어 원소스 멀티유즈 후보로 볼 수 있습니다.",
       };
     })
     .filter((candidate) => candidate.score > 0 || candidate.priority >= 20)
@@ -1141,9 +1303,14 @@ export function MainTab({
     active: "적극 운영",
     overloaded: "과다 가능성",
   };
-  const missingTopic =
-    defaultTopics.find((topic) => !monthContents.some((content) => (content.topic ?? "기타") === topic)) ??
-    "기타";
+  const todayKey = getDateKey(new Date());
+  const recommendationDateKeys = calendarDays
+    .filter((day) => !day.isBlank && day.dateKey >= todayKey)
+    .filter((day) => monthContents.every((content) => getContentDate(content) !== day.dateKey))
+    .filter((day) => shouldShowDateRecommendation(day.dateKey, filteredContents))
+    .map((day) => day.dateKey);
+  const keywordPortfolio = getKeywordPortfolioRecommendation(monthContents, recommendationDateKeys, todayKey);
+  const missingTopic = keywordPortfolio.keyword;
   const formatUsage = contentTypes.map((contentType) => ({
     contentType,
     count: monthContents.filter((content) => normalizeContentType(content) === contentType).length,
@@ -1151,7 +1318,6 @@ export function MainTab({
   const leastUsedFormat =
     formatUsage.sort((first, second) => first.count - second.count)[0]?.contentType ?? "기타";
   const recentKeywords = getRecentKeywords(monthContents);
-  const todayKey = getDateKey(new Date());
   const todayItems = filteredContents.filter((content) => content.plannedDate === todayKey);
   const oldHighScoreContent = filteredContents
     .filter((content) => {
@@ -1239,12 +1405,12 @@ export function MainTab({
   const todayDirectionSummary =
     todayItems.length > 0 ? "올린 글의 반응을 확인하세요." : "새 글보다 흐름 점검이 좋습니다.";
   const keywordUsage = getKeywordUsage(monthContents);
-  const recommendedKeywordUseCount = monthContents.filter((content) => {
-    return (content.topic ?? "기타") === missingTopic || getContentKeywords(content).includes(missingTopic);
-  }).length;
+  const recommendedKeywordUseCount = keywordPortfolio.currentCount;
+  const projectedKeywordUseCount = Math.max(keywordPortfolio.projectedCount, recommendedKeywordUseCount + 1);
+  const alternativeKeywordLabels = keywordPortfolio.alternatives.map((item) => item.keyword).slice(0, 3);
   const keywordDistributionItems = [
     ...keywordUsage.filter((item) => item.keyword !== missingTopic),
-    { keyword: missingTopic, count: recommendedKeywordUseCount },
+    { keyword: missingTopic, count: projectedKeywordUseCount },
   ]
     .sort((first, second) => {
       if (first.keyword === missingTopic) {
@@ -1266,17 +1432,17 @@ export function MainTab({
     })
     .sort((first, second) => new Date(getContentDate(second)).getTime() - new Date(getContentDate(first)).getTime())
     .slice(0, 3);
-  const keywordActionLine = `${missingTopic}을 짧은 장면으로 써보세요.`;
+  const keywordActionLine = keywordPortfolio.isRepeatedThisWeek
+    ? `${missingTopic}은 이번 주에 보여서 ${alternativeKeywordLabels[0] ?? "다른 키워드"}와 나눠보세요.`
+    : `${missingTopic}을 짧은 장면으로 써보세요.`;
   const keywordEvidenceItems = [
-    recommendedKeywordUseCount <= 1
-      ? "이번 달 적게 쓴 주제입니다."
-      : `${recommendedKeywordUseCount}회 사용해 다른 각도가 필요합니다.`,
+    `현재 ${recommendedKeywordUseCount}회 · 추천 반영 후 ${projectedKeywordUseCount}회입니다.`,
     repeatedKeywords.length > 0
-      ? `${repeatedKeywords[0]} 흐름이 반복돼 균형이 필요합니다.`
+      ? `${repeatedKeywords[0]} 흐름이 반복돼 ${missingTopic}로 분산합니다.`
       : "최근 반복 키워드는 크지 않습니다.",
-    relatedKeywordContents.length > 0
-      ? "과거 반응이 있는 글을 참고할 수 있습니다."
-      : "새 감정선으로 테스트하기 좋습니다.",
+    alternativeKeywordLabels.length > 0
+      ? `대체 후보는 ${alternativeKeywordLabels.join(", ")}입니다.`
+      : "추천 가능한 대체 키워드가 적습니다.",
   ].slice(0, 3);
   const keywordSummary = monthContents.some((content) => (content.topic ?? "기타") === missingTopic)
     ? `${missingTopic}을 다른 감정선으로 분산하세요.`
@@ -1600,9 +1766,9 @@ export function MainTab({
           </p>
           {activeMultiUseCandidate && (
             <div className="keyword-row">
+              <b>{activeMultiUseCandidate.reuseType}</b>
               <b>{activeMultiUseCandidate.platform}</b>
-              <b>{normalizeContentType(activeMultiUseCandidate.content)}</b>
-              <b>{activeMultiUseCandidate.content.topic ?? "기타"}</b>
+              <b>{activeMultiUseCandidate.riskLabel}</b>
             </div>
           )}
         </button>
@@ -1954,7 +2120,10 @@ export function MainTab({
                           setSelectedDecisionList([]);
                         }}
                       >
-                        <span>{getCalendarContentBadgeLabel(content)}</span>
+                        <span className="calendar-content-badge-label">
+                          <b>{getCalendarContentBadgeLabel(content).platform}</b>
+                          <em>{getCalendarContentBadgeLabel(content).format}</em>
+                        </span>
                         <strong>{content.title}</strong>
                         <small>
                           {accountMap.get(content.accountId)?.displayName ?? "계정 없음"} ·{" "}
@@ -2372,7 +2541,7 @@ export function MainTab({
             <div className="card-heading">
               <div>
                 <h3>멀티유즈 후보</h3>
-                <p>이미 올린 게시물을 다른 형식으로 다시 쓰는 방향입니다.</p>
+                <p>같은 원소스를 다른 플랫폼과 형식에 맞게 바꾸는 방향입니다.</p>
               </div>
               <button className="secondary-button" type="button" onClick={() => setMultiUseModalContentId(null)}>
                 닫기
@@ -2397,19 +2566,24 @@ export function MainTab({
                 </p>
                 <div className="decision-detail-grid">
                   <div className="operation-judgement-card">
-                    <span>추천 플랫폼</span>
+                    <span>변환 방향</span>
                     <strong>{multiUseModalCandidate.platform}</strong>
                     <p>{multiUseModalCandidate.suggestion}</p>
                   </div>
                   <div className="operation-judgement-card">
-                    <span>왜 다시 쓸까</span>
-                    <strong>반응 {multiUseModalCandidate.score}</strong>
+                    <span>변환 유형</span>
+                    <strong>{multiUseModalCandidate.reuseType}</strong>
+                    <p>{multiUseModalCandidate.reuseNote}</p>
+                  </div>
+                  <div className="operation-judgement-card">
+                    <span>반복 위험</span>
+                    <strong>{multiUseModalCandidate.riskLabel}</strong>
                     <p>{multiUseModalCandidate.reason}</p>
                   </div>
                   <div className="operation-judgement-card">
                     <span>한 줄 실행</span>
                     <strong>{normalizeContentType(multiUseModalCandidate.content)}</strong>
-                    <p>{multiUseModalCandidate.suggestion}</p>
+                    <p>그대로 옮기기보다 관점이나 구조를 바꿔보세요.</p>
                   </div>
                 </div>
               </div>
@@ -2486,11 +2660,19 @@ export function MainTab({
             </div>
             <div className="keyword-evidence-list">
               <span>추천 근거</span>
+              <div className="keyword-row">
+                <b>현재 {recommendedKeywordUseCount}회</b>
+                <b>예상 {projectedKeywordUseCount}회</b>
+                <b>{keywordPortfolio.isRepeatedThisWeek ? "이번 주 반복" : "이번 주 여유"}</b>
+              </div>
               <ol>
                 {keywordEvidenceItems.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ol>
+              {alternativeKeywordLabels.length > 0 && (
+                <p className="empty-copy">대체 후보: {alternativeKeywordLabels.join(" · ")}</p>
+              )}
             </div>
             {keywordDistributionItems.length > 0 ? (
               <div className="keyword-distribution" aria-label="키워드 분포">
