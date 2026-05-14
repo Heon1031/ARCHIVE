@@ -3931,15 +3931,121 @@ textarea {
   }
 }
 
+/* Reminder and operating judgement cleanup */
+.main-home-panel .today-reminder-card {
+  gap: 8px;
+  padding: var(--card-padding);
+  overflow: hidden;
+  border: 1px solid var(--lg-border);
+  border-radius: var(--card-radius);
+  background: var(--lg-surface);
+  box-shadow: var(--lg-shadow);
+  backdrop-filter: blur(24px) saturate(1.18);
+}
+
+.main-home-panel .today-reminder-card .card-heading,
+.main-home-panel .today-reminder-card .reminder-slide,
+.main-home-panel .today-reminder-card > .empty-copy {
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.main-home-panel .today-reminder-card .reminder-summary-card {
+  padding: 0;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide {
+  padding: 10px 0 0;
+  border-top: 1px solid var(--lg-hairline);
+}
+
+.main-home-panel .today-reminder-card .reminder-slide strong,
+.main-home-panel .today-reminder-card .reminder-slide p,
+.main-home-panel .today-reminder-card .reminder-reason {
+  min-width: 0;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide p,
+.main-home-panel .today-reminder-card .reminder-reason,
+.main-home-panel .today-reminder-card .card-heading p {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+}
+
+.main-home-panel .judgement-card p {
+  display: -webkit-box;
+  min-height: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+}
+
+@media (max-width: 1024px) {
+  .main-home-panel .section-grid {
+    gap: var(--card-gap);
+  }
+
+  .main-home-panel .today-reminder-card {
+    width: 100%;
+  }
+
+  .main-home-panel .today-reminder-card .content-thumbnail {
+    height: min(var(--reminder-thumb-h), 104px);
+  }
+}
+
+/* Wireframe layout override: calendar primary, operation panel secondary */
+.main-home-panel .section-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(var(--side-panel-min), var(--side-panel-max));
+  grid-template-areas:
+    "calendar cards"
+    "calendar detail"
+    "calendar reminder"
+    "date date";
+}
+
+.main-home-panel .calendar-home-card {
+  grid-area: calendar;
+  min-width: 0;
+}
+
+.main-home-panel .judgement-card-grid,
+.main-home-panel .flow-summary-card,
+.main-home-panel .today-reminder-card {
+  width: 100%;
+  max-width: var(--side-panel-max);
+  justify-self: stretch;
+}
+
+@media (max-width: 1024px) {
+  .main-home-panel .section-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "calendar"
+      "cards"
+      "detail"
+      "reminder"
+      "date";
+  }
+
+  .main-home-panel .judgement-card-grid,
+  .main-home-panel .flow-summary-card,
+  .main-home-panel .today-reminder-card {
+    max-width: none;
+  }
+}
+
 /* Main grid-template-areas stabilization */
 .main-home-panel .section-grid {
   display: grid;
   width: 100%;
-  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
   grid-template-areas:
-    "cards calendar"
-    "detail calendar"
-    "reminder calendar"
+    "calendar cards"
+    "calendar detail"
+    "calendar reminder"
     "date date";
   gap: clamp(20px, 2vw, 32px);
   align-items: start;
@@ -4138,9 +4244,9 @@ textarea {
   .main-home-panel .section-grid {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
+      "calendar"
       "cards"
       "detail"
-      "calendar"
       "reminder"
       "date";
   }
@@ -4489,5 +4595,1381 @@ textarea {
   .main-home-panel .flow-summary-card,
   .main-home-panel .today-reminder-card {
     max-width: none;
+  }
+}
+
+/* Operation panel spacing and reminder group stabilization */
+.main-home-panel .section-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(var(--side-panel-min), var(--side-panel-max));
+  grid-template-areas:
+    "calendar cards"
+    "calendar detail"
+    "calendar reminder"
+    "date date";
+  gap: var(--main-grid-gap);
+  align-items: start;
+}
+
+.main-home-panel .judgement-card-grid,
+.main-home-panel .flow-summary-card,
+.main-home-panel .today-reminder-card {
+  width: 100%;
+  max-width: var(--side-panel-max);
+  min-width: 0;
+  justify-self: stretch;
+}
+
+.main-home-panel .judgement-card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+}
+
+.main-home-panel .today-reminder-card {
+  display: flex !important;
+  flex-direction: column;
+  gap: 0;
+  padding: var(--card-padding);
+  overflow: hidden;
+  border: 1px solid var(--lg-border);
+  border-radius: var(--card-radius);
+  background: var(--lg-surface);
+  box-shadow: var(--lg-shadow);
+  backdrop-filter: blur(24px) saturate(1.18);
+}
+
+.main-home-panel .today-reminder-card .reminder-summary-card,
+.main-home-panel .today-reminder-card .reminder-slide,
+.main-home-panel .today-reminder-card > .empty-copy {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.main-home-panel .today-reminder-card .reminder-summary-card {
+  grid-template-columns: minmax(0, 1fr) 64px;
+  gap: 12px;
+  padding: 0 0 12px;
+}
+
+.main-home-panel .today-reminder-card .reminder-summary-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  max-height: 260px;
+  padding: 12px 0 0;
+  overflow: hidden;
+  border-top: 1px solid var(--lg-hairline);
+}
+
+.main-home-panel .today-reminder-card .content-thumbnail {
+  display: none;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide p,
+.main-home-panel .today-reminder-card .reminder-reason,
+.main-home-panel .today-reminder-card .card-heading p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide p {
+  -webkit-line-clamp: 2;
+}
+
+.main-home-panel .today-reminder-card .reminder-reason {
+  -webkit-line-clamp: 1 !important;
+}
+
+@media (max-width: 1024px) {
+  .main-home-panel .section-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "calendar"
+      "cards"
+      "detail"
+      "reminder"
+      "date";
+  }
+
+  .main-home-panel .judgement-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--card-gap);
+    max-width: none;
+  }
+
+  .main-home-panel .flow-summary-card,
+  .main-home-panel .today-reminder-card {
+    max-width: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .main-home-panel .judgement-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Operation panel final stability pass */
+.main-home-panel .operation-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+  min-width: 0;
+  align-self: start;
+}
+
+.main-home-panel .operation-panel .judgement-card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+  min-width: 0;
+}
+
+.main-home-panel .operation-panel .judgement-card,
+.main-home-panel .operation-panel .multiuse-card,
+.main-home-panel .operation-panel .today-reminder-card {
+  width: 100%;
+  min-width: 0;
+}
+
+.main-home-panel .operation-panel .multiuse-card,
+.main-home-panel .operation-panel .today-reminder-card .reminder-dots {
+  justify-content: center;
+}
+
+.main-home-panel .today-reminder-card {
+  overflow: visible;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide {
+  max-height: none;
+  overflow: visible;
+}
+
+.main-home-panel .today-reminder-card .reminder-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.reminder-modal-card {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.reminder-modal-card .selected-content-copy,
+.reminder-modal-card .selected-content-copy h3,
+.reminder-modal-card .selected-content-copy > p,
+.reminder-modal-card .decision-caution {
+  display: block;
+  max-height: none;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: pre-wrap;
+  -webkit-box-orient: initial;
+  -webkit-line-clamp: unset;
+}
+
+.reminder-modal-card .selected-content-copy h3 {
+  white-space: normal;
+}
+
+@media (max-width: 1024px) {
+  .main-home-panel .section-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "calendar"
+      "operation"
+      "date";
+  }
+
+  .main-home-panel .operation-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--card-gap);
+    max-width: none;
+    width: 100%;
+  }
+
+  .main-home-panel .operation-panel .judgement-card-grid {
+    display: contents;
+  }
+
+  .main-home-panel .operation-panel .judgement-card,
+  .main-home-panel .operation-panel .multiuse-card {
+    min-height: 150px;
+  }
+
+  .main-home-panel .operation-panel .today-reminder-card {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .main-home-panel .operation-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .main-home-panel .operation-panel .today-reminder-card {
+    grid-column: auto;
+  }
+}
+
+/* Step 2: detail panel readability */
+.main-home-panel .date-management-card .operation-judgement-grid {
+  gap: 18px;
+}
+
+.main-home-panel .date-management-card .operation-judgement-card,
+.main-home-panel .date-management-card .decision-detail-grid > div {
+  min-width: 0;
+  padding: 18px 20px;
+}
+
+.main-home-panel .date-management-card .operation-judgement-card p,
+.main-home-panel .date-management-card .decision-detail-grid span,
+.main-home-panel .date-management-card .decision-detail-grid strong {
+  line-height: 1.5;
+}
+
+.main-home-panel .date-management-card .operation-judgement-card p {
+  display: -webkit-box;
+  overflow: hidden;
+  text-overflow: clip;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.main-home-panel .date-management-card .selected-content-copy > p,
+.main-home-panel .date-management-card .selected-decision-detail > p {
+  display: -webkit-box;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.main-home-panel .date-management-card .decision-caution {
+  display: -webkit-box;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.main-home-panel .date-management-card .account-card__actions {
+  justify-content: center;
+}
+
+.reminder-modal-card .selected-content-copy > p,
+.reminder-modal-card .decision-caution {
+  display: block;
+  max-height: none;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: pre-wrap;
+  -webkit-box-orient: initial;
+  -webkit-line-clamp: unset;
+}
+
+/* Main 1.7: operation-panel balance and reminder slide polish */
+@keyframes reminderDissolve {
+  from {
+    opacity: 0.72;
+    transform: translateY(2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.main-home-panel .today-reminder-card .reminder-hero-visual {
+  animation: reminderDissolve 240ms ease both;
+  transition:
+    opacity 240ms ease,
+    transform 240ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease;
+}
+
+.main-home-panel .today-reminder-card .reminder-dots {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.reminder-modal-card {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.reminder-modal-card .selected-content-copy,
+.reminder-modal-card .selected-content-copy > p,
+.reminder-modal-card .decision-caution {
+  display: block;
+  max-height: none;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  -webkit-line-clamp: unset;
+}
+
+@media (max-width: 1024px) {
+  .main-home-panel .operation-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--card-gap);
+    max-width: none;
+  }
+
+  .main-home-panel .operation-panel .judgement-card-grid {
+    display: contents;
+  }
+
+  .main-home-panel .operation-panel .judgement-card,
+  .main-home-panel .operation-panel .multiuse-card {
+    min-height: 150px;
+  }
+
+  .main-home-panel .operation-panel .today-reminder-card {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .main-home-panel .operation-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .main-home-panel .operation-panel .today-reminder-card {
+    grid-column: auto;
+  }
+}
+
+/* Final visible reminder thumbnail rule */
+.main-home-panel .today-reminder-card .reminder-visible-thumbnail {
+  display: grid !important;
+  width: 100% !important;
+  height: 132px !important;
+  min-height: 132px !important;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--lg-primary-soft);
+  cursor: pointer;
+}
+
+.main-home-panel .today-reminder-card .reminder-visible-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.main-home-panel .today-reminder-card .reminder-visible-thumbnail span {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: var(--lg-primary);
+  font-weight: 900;
+}
+
+/* Final reminder 1.5 visibility guard */
+.main-home-panel .today-reminder-card .content-thumbnail.reminder-thumbnail-button {
+  grid-area: auto;
+  display: grid !important;
+  width: 100% !important;
+  height: 132px !important;
+  max-height: 132px !important;
+  min-height: 132px !important;
+  aspect-ratio: 16 / 10;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  opacity: 1;
+  visibility: visible;
+  background: var(--lg-primary-soft);
+  cursor: pointer;
+}
+
+.main-home-panel .today-reminder-card .content-thumbnail.reminder-thumbnail-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.main-home-panel .today-reminder-card .content-thumbnail.reminder-thumbnail-button span {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+}
+
+.main-home-panel .today-reminder-card .reminder-main-thumbnail {
+  display: grid;
+  width: 100%;
+  height: 132px;
+  min-height: 132px;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--lg-primary-soft);
+  cursor: pointer;
+}
+
+.main-home-panel .today-reminder-card .reminder-main-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.main-home-panel .today-reminder-card .reminder-main-thumbnail span {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: var(--lg-primary);
+  font-weight: 900;
+}
+
+.main-home-panel .today-reminder-card .reminder-visible-thumbnail {
+  display: grid;
+  width: 100%;
+  height: 132px;
+  min-height: 132px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--lg-primary-soft);
+  cursor: pointer;
+}
+
+.main-home-panel .today-reminder-card .reminder-visible-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.main-home-panel .today-reminder-card .reminder-visible-thumbnail span {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: var(--lg-primary);
+  font-weight: 900;
+}
+
+/* Reminder 1.5 UX cleanup */
+.main-home-panel .operation-panel .multiuse-card {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.main-home-panel .operation-panel .multiuse-card:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.main-home-panel .operation-panel .multiuse-card strong {
+  font-size: clamp(20px, 2vw, 26px);
+  line-height: 1.15;
+}
+
+.main-home-panel .operation-panel .multiuse-card p {
+  margin: 0;
+  color: var(--lg-muted);
+  line-height: 1.45;
+}
+
+.main-home-panel .today-reminder-card .reminder-summary-card {
+  grid-template-columns: minmax(0, 1fr);
+  padding-bottom: 10px;
+}
+
+.main-home-panel .today-reminder-card .reminder-summary-thumb,
+.main-home-panel .today-reminder-card .reminder-controls,
+.main-home-panel .today-reminder-card .reminder-detail-button {
+  display: none !important;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide {
+  max-height: none;
+  gap: 10px;
+}
+
+.main-home-panel .today-reminder-card .content-thumbnail.reminder-thumbnail-button {
+  grid-area: auto;
+  display: grid !important;
+  width: 100% !important;
+  height: 132px !important;
+  max-height: 132px !important;
+  min-height: 132px !important;
+  aspect-ratio: 16 / 10;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  opacity: 1;
+  visibility: visible;
+  background: var(--lg-primary-soft);
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease;
+}
+
+.main-home-panel .today-reminder-card .content-thumbnail.reminder-thumbnail-button:hover,
+.main-home-panel .today-reminder-card .content-thumbnail.reminder-thumbnail-button:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 38px rgba(31, 35, 60, 0.14);
+  filter: saturate(1.04);
+}
+
+.main-home-panel .today-reminder-card .content-thumbnail.reminder-thumbnail-button img,
+.main-home-panel .today-reminder-card .content-thumbnail.reminder-thumbnail-button span {
+  width: 100%;
+  height: 100%;
+}
+
+.main-home-panel .today-reminder-card .content-thumbnail.reminder-thumbnail-button img {
+  object-fit: cover;
+}
+
+.main-home-panel .today-reminder-card .content-thumbnail.reminder-thumbnail-button span {
+  display: grid;
+  place-items: center;
+}
+
+.main-home-panel .today-reminder-card .reminder-dots {
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.main-home-panel .today-reminder-card .reminder-dots button {
+  cursor: pointer;
+}
+
+/* Final override: operation panel owns the reminder card */
+.main-home-panel .section-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(var(--side-panel-min), var(--side-panel-max));
+  grid-template-areas:
+    "calendar operation"
+    "date date";
+  gap: var(--main-grid-gap);
+  align-items: start;
+}
+
+.main-home-panel .operation-panel {
+  grid-area: operation;
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+  width: 100%;
+  max-width: var(--side-panel-max);
+  min-width: 0;
+  align-self: start;
+}
+
+.main-home-panel .operation-panel .judgement-card-grid,
+.main-home-panel .operation-panel .today-reminder-card {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+.main-home-panel .operation-panel .judgement-card-grid {
+  grid-area: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+}
+
+.main-home-panel .operation-panel .flow-summary-card {
+  display: none;
+}
+
+.main-home-panel .operation-panel .today-reminder-card {
+  grid-area: auto;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+@media (max-width: 1024px) {
+  .main-home-panel .section-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "calendar"
+      "operation"
+      "date";
+  }
+
+  .main-home-panel .operation-panel {
+    max-width: none;
+  }
+
+  .main-home-panel .operation-panel .judgement-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .main-home-panel .operation-panel .judgement-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Final operation panel structure: reminder is a child of operation, not a grid area */
+.main-home-panel .section-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(var(--side-panel-min), var(--side-panel-max));
+  grid-template-areas:
+    "calendar operation"
+    "date date";
+  gap: var(--main-grid-gap);
+  align-items: start;
+}
+
+.main-home-panel .operation-panel {
+  grid-area: operation;
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+  width: 100%;
+  max-width: var(--side-panel-max);
+  min-width: 0;
+  align-self: start;
+}
+
+.main-home-panel .operation-panel .judgement-card-grid,
+.main-home-panel .operation-panel .today-reminder-card {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+.main-home-panel .operation-panel .judgement-card-grid {
+  grid-area: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+}
+
+.main-home-panel .operation-panel .flow-summary-card {
+  display: none;
+}
+
+.main-home-panel .operation-panel .today-reminder-card {
+  grid-area: auto;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+@media (max-width: 1024px) {
+  .main-home-panel .section-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "calendar"
+      "operation"
+      "date";
+  }
+
+  .main-home-panel .operation-panel {
+    max-width: none;
+  }
+
+  .main-home-panel .operation-panel .judgement-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .main-home-panel .operation-panel .judgement-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Reminder structure recovery: keep reminder inside the operation panel flow */
+.main-home-panel .section-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(var(--side-panel-min), var(--side-panel-max));
+  grid-template-areas:
+    "calendar operation"
+    "date date";
+  gap: var(--main-grid-gap);
+  align-items: start;
+}
+
+.main-home-panel .operation-panel {
+  grid-area: operation;
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+  width: 100%;
+  max-width: var(--side-panel-max);
+  min-width: 0;
+  align-self: start;
+}
+
+.main-home-panel .operation-panel .judgement-card-grid,
+.main-home-panel .operation-panel .today-reminder-card {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+.main-home-panel .operation-panel .judgement-card-grid {
+  grid-area: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+}
+
+.main-home-panel .operation-panel .flow-summary-card {
+  display: none;
+}
+
+.main-home-panel .operation-panel .today-reminder-card {
+  grid-area: auto;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+@media (max-width: 1024px) {
+  .main-home-panel .section-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "calendar"
+      "operation"
+      "date";
+  }
+
+  .main-home-panel .operation-panel {
+    max-width: none;
+  }
+
+  .main-home-panel .operation-panel .judgement-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .main-home-panel .operation-panel .judgement-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Step 1: lock reminder inside the operation panel column */
+.main-home-panel .section-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(var(--side-panel-min), var(--side-panel-max));
+  grid-template-areas:
+    "calendar cards"
+    "calendar reminder"
+    "date date";
+  gap: var(--main-grid-gap);
+  align-items: start;
+}
+
+.main-home-panel .calendar-home-card {
+  grid-area: calendar;
+  min-width: 0;
+}
+
+.main-home-panel .judgement-card-grid {
+  grid-area: cards;
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+  width: 100%;
+  max-width: var(--side-panel-max);
+  min-width: 0;
+  justify-self: stretch;
+}
+
+.main-home-panel .today-reminder-card {
+  grid-area: reminder;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--side-panel-max);
+  min-width: 0;
+  max-height: none;
+  margin: 0;
+  justify-self: stretch;
+  position: static;
+  overflow: hidden;
+}
+
+.main-home-panel .today-reminder-card .reminder-summary-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  max-height: none;
+}
+
+.main-home-panel .today-reminder-card .content-thumbnail {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .main-home-panel .section-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "calendar"
+      "cards"
+      "reminder"
+      "date";
+  }
+
+  .main-home-panel .judgement-card-grid,
+  .main-home-panel .today-reminder-card {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+/* Main operation information cleanup */
+.main-home-panel .date-management-card > .card-heading > div > h3,
+.main-home-panel .date-management-card > .card-heading > div > p {
+  display: block;
+}
+
+.main-home-panel .date-management-card > .card-heading > div::before,
+.main-home-panel .date-management-card > .card-heading > div::after {
+  content: none;
+  display: none;
+}
+
+.main-home-panel .date-content-strip,
+.main-home-panel .date-recommendation-card {
+  display: none;
+}
+
+.main-home-panel .calendar-cell:not(.calendar-cell--blank),
+.main-home-panel .calendar-content-card,
+.main-home-panel .calendar-recommendation-chip,
+.main-home-panel .judgement-card,
+.main-home-panel .reminder-slide {
+  cursor: pointer;
+}
+
+.main-home-panel .calendar-cell--blank {
+  cursor: default;
+}
+
+.main-home-panel .calendar-cell:not(.calendar-cell--blank),
+.main-home-panel .calendar-content-card,
+.main-home-panel .calendar-recommendation-chip,
+.main-home-panel .reminder-slide {
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.main-home-panel .reminder-slide:hover,
+.main-home-panel .calendar-content-card:hover,
+.main-home-panel .calendar-recommendation-chip:hover {
+  transform: translateY(-1px);
+}
+
+.main-home-panel .reminder-detail-button {
+  justify-self: start;
+  margin-top: 4px;
+  padding: 7px 12px;
+  font-size: 12px;
+}
+
+.selected-decision-detail--empty {
+  min-height: 130px;
+  align-content: center;
+}
+
+.reminder-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: rgba(23, 19, 33, 0.28);
+  backdrop-filter: blur(18px);
+}
+
+.reminder-modal-card {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 56px);
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 28px 90px rgba(31, 35, 60, 0.24);
+}
+
+.reminder-modal-card .selected-content-detail {
+  margin-top: 16px;
+}
+
+.reminder-modal-card .selected-content-copy > p {
+  display: block;
+  max-height: none;
+  overflow: visible;
+  -webkit-line-clamp: initial;
+}
+
+@media (max-width: 720px) {
+  .reminder-modal-backdrop {
+    padding: 16px;
+  }
+
+  .reminder-modal-card .selected-content-detail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Operation panel readability cleanup */
+.main-home-panel .section-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(var(--side-panel-min), var(--side-panel-max));
+  grid-template-areas:
+    "calendar operation"
+    "date date";
+  gap: var(--main-grid-gap);
+  align-items: start;
+}
+
+.main-home-panel .operation-panel {
+  grid-area: operation;
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+  width: 100%;
+  max-width: var(--side-panel-max);
+  min-width: 0;
+  align-self: start;
+}
+
+.main-home-panel .flow-summary-card {
+  display: none;
+}
+
+.main-home-panel .judgement-card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.main-home-panel .judgement-card {
+  padding: 18px 20px;
+}
+
+.main-home-panel .judgement-card strong {
+  margin-top: 8px;
+  font-size: clamp(24px, 2vw, 30px);
+  line-height: 1.05;
+}
+
+.main-home-panel .judgement-card p {
+  margin-top: 8px;
+  line-height: 1.48;
+  -webkit-line-clamp: 1;
+}
+
+.main-home-panel .today-reminder-card {
+  gap: 0;
+  padding: 18px;
+}
+
+.main-home-panel .today-reminder-card .reminder-summary-card {
+  padding: 0 0 12px;
+}
+
+.main-home-panel .today-reminder-card .reminder-summary-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide {
+  max-height: 220px;
+  padding-top: 12px;
+}
+
+.main-home-panel .today-reminder-card .content-thumbnail {
+  display: none;
+}
+
+.main-home-panel .today-reminder-card .reminder-score,
+.main-home-panel .today-reminder-card .reminder-reason {
+  margin-top: 6px;
+}
+
+/* Final reminder 1.5 visibility guard */
+.main-home-panel .today-reminder-card .content-thumbnail.reminder-thumbnail-button {
+  grid-area: auto;
+  display: grid !important;
+  width: 100% !important;
+  height: 132px !important;
+  max-height: 132px !important;
+  min-height: 132px !important;
+  aspect-ratio: 16 / 10;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  opacity: 1;
+  visibility: visible;
+  background: var(--lg-primary-soft);
+  cursor: pointer;
+}
+
+.main-home-panel .today-reminder-card .content-thumbnail.reminder-thumbnail-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.main-home-panel .today-reminder-card .content-thumbnail.reminder-thumbnail-button span {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+}
+
+.main-home-panel .date-management-card {
+  padding: 22px;
+}
+
+.main-home-panel .date-management-card > .card-heading {
+  margin-bottom: 18px;
+}
+
+.main-home-panel .operation-judgement-grid,
+.main-home-panel .decision-detail-grid {
+  gap: 18px;
+}
+
+.main-home-panel .operation-judgement-card,
+.main-home-panel .decision-detail-grid > div {
+  padding: 18px;
+  line-height: 1.5;
+}
+
+.main-home-panel .operation-judgement-card p,
+.main-home-panel .selected-decision-detail p,
+.main-home-panel .decision-caution {
+  display: -webkit-box;
+  overflow: hidden;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+}
+
+.main-home-panel .operation-judgement-card p {
+  -webkit-line-clamp: 1;
+}
+
+.main-home-panel .selected-decision-detail > p,
+.main-home-panel .decision-caution {
+  -webkit-line-clamp: 2;
+}
+
+.main-home-panel .date-editor-form {
+  display: none;
+}
+
+/* Final reminder 1.5 visibility guard */
+.main-home-panel .today-reminder-card .reminder-main-thumbnail {
+  display: grid !important;
+  width: 100% !important;
+  height: 132px !important;
+  max-height: 132px !important;
+  min-height: 132px !important;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--lg-primary-soft);
+  cursor: pointer;
+}
+
+.main-home-panel .today-reminder-card .reminder-main-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.main-home-panel .today-reminder-card .reminder-main-thumbnail span {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: var(--lg-primary);
+  font-weight: 900;
+}
+
+.main-home-panel .today-reminder-card .reminder-visible-thumbnail {
+  display: grid !important;
+  width: 100% !important;
+  height: 132px !important;
+  min-height: 132px !important;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--lg-primary-soft);
+  cursor: pointer;
+}
+
+.main-home-panel .today-reminder-card .reminder-visible-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.main-home-panel .today-reminder-card .reminder-visible-thumbnail span {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: var(--lg-primary);
+  font-weight: 900;
+}
+
+/* Reminder 1.6 simplification */
+.main-home-panel .today-reminder-card .reminder-slide {
+  display: flex !important;
+  flex-direction: column;
+  gap: 10px;
+  max-height: none;
+  padding-top: 12px;
+}
+
+.main-home-panel .today-reminder-card .reminder-hero-visual {
+  display: block !important;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--lg-primary-soft);
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease;
+}
+
+.main-home-panel .today-reminder-card .reminder-hero-visual:hover,
+.main-home-panel .today-reminder-card .reminder-hero-visual:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 38px rgba(31, 35, 60, 0.14);
+  filter: saturate(1.04);
+}
+
+.main-home-panel .today-reminder-card .reminder-hero-visual img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.main-home-panel .today-reminder-card .reminder-hero-visual span {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: var(--lg-primary);
+  font-weight: 900;
+}
+
+.main-home-panel .today-reminder-card .reminder-dots {
+  justify-content: center;
+}
+
+.reminder-modal-card {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.reminder-modal-card .selected-content-copy h3 {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.reminder-modal-card .selected-content-copy > p,
+.reminder-modal-card .decision-caution {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+}
+
+@media (max-width: 1024px) {
+  .main-home-panel .section-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "calendar"
+      "operation"
+      "date";
+  }
+
+  .main-home-panel .operation-panel {
+    max-width: none;
+  }
+
+  .main-home-panel .judgement-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+}
+
+@media (max-width: 720px) {
+  .main-home-panel .judgement-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Final override: modal text and operation-panel breakpoints */
+.main-home-panel .operation-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+  min-width: 0;
+  align-self: start;
+}
+
+.main-home-panel .operation-panel .judgement-card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+  min-width: 0;
+}
+
+.main-home-panel .operation-panel .judgement-card,
+.main-home-panel .operation-panel .multiuse-card,
+.main-home-panel .operation-panel .today-reminder-card {
+  width: 100%;
+  min-width: 0;
+}
+
+.main-home-panel .operation-panel .multiuse-card,
+.main-home-panel .operation-panel .today-reminder-card .reminder-dots {
+  justify-content: center;
+}
+
+.main-home-panel .today-reminder-card {
+  overflow: visible;
+}
+
+.main-home-panel .today-reminder-card .reminder-slide {
+  max-height: none;
+  overflow: visible;
+}
+
+.main-home-panel .today-reminder-card .reminder-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.reminder-modal-card {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.reminder-modal-card .selected-content-copy,
+.reminder-modal-card .selected-content-copy h3,
+.reminder-modal-card .selected-content-copy > p,
+.reminder-modal-card .decision-caution {
+  display: block;
+  max-height: none;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: pre-wrap;
+  -webkit-box-orient: initial;
+  -webkit-line-clamp: unset;
+}
+
+.reminder-modal-card .selected-content-copy h3 {
+  white-space: normal;
+}
+
+@media (max-width: 1024px) {
+  .main-home-panel .section-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "calendar"
+      "operation"
+      "date";
+  }
+
+  .main-home-panel .operation-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--card-gap);
+    max-width: none;
+    width: 100%;
+  }
+
+  .main-home-panel .operation-panel .judgement-card-grid {
+    display: contents;
+  }
+
+  .main-home-panel .operation-panel .judgement-card,
+  .main-home-panel .operation-panel .multiuse-card {
+    min-height: 150px;
+  }
+
+  .main-home-panel .operation-panel .today-reminder-card {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .main-home-panel .operation-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .main-home-panel .operation-panel .today-reminder-card {
+    grid-column: auto;
   }
 }

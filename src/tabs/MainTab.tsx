@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { contentTypes, getManagedKeywords, normalizeContentType } from "../lib/taxonomy";
 import type { Account, AccountFilterValue, ContentItem, ContentStatus, InsightRecord, Platform } from "../types/models";
 
@@ -914,6 +914,78 @@ function getReminderCandidates(
     .map(({ content, score, reason, summary }) => ({ content, score, reason, summary }));
 }
 
+function getMultiUseDirection(content: ContentItem) {
+  const contentType = normalizeContentType(content);
+
+  if (content.platform === "instagram" && (content.format === "carousel" || contentType === "캐러셀")) {
+    return {
+      direction: "Threads 변환",
+      platform: "Threads",
+      suggestion: "핵심 문장 1~2개를 짧은 글로 옮겨보세요.",
+    };
+  }
+
+  if (contentType === "긴글" || contentType === "에세이" || contentType === "산문") {
+    return {
+      direction: "짧은글 변환",
+      platform: "Threads",
+      suggestion: "긴 문장을 2~4문장으로 압축해보세요.",
+    };
+  }
+
+  if (content.format === "reel" || contentType === "릴스/영상") {
+    return {
+      direction: "후기 글 변환",
+      platform: "Threads",
+      suggestion: "장면 뒤의 생각을 질문형 글로 풀어보세요.",
+    };
+  }
+
+  if (content.platform === "threads") {
+    return {
+      direction: "이미지 캡션",
+      platform: "Instagram",
+      suggestion: "반응 좋았던 문장을 이미지 캡션으로 다시 써보세요.",
+    };
+  }
+
+  return {
+    direction: "짧은글 변환",
+    platform: "Threads",
+    suggestion: "고반응 메시지를 짧은 문장으로 바꿔보세요.",
+  };
+}
+
+function getMultiUseCandidates(contents: ContentItem[], insights: InsightRecord[]) {
+  return contents
+    .map((content) => {
+      const latestInsight = getLatestInsight(content, insights);
+      const contentDate = getContentDate(content);
+      const daysAgo = contentDate ? (Date.now() - new Date(contentDate).getTime()) / (1000 * 60 * 60 * 24) : 0;
+      const score = latestInsight ? getReactionScore(latestInsight) : 0;
+      const reusableFormat =
+        content.format === "carousel" ||
+        content.format === "reel" ||
+        ["긴글", "에세이", "산문", "이미지+캡션", "캐러셀", "릴스/영상"].includes(normalizeContentType(content));
+      const direction = getMultiUseDirection(content);
+      const priority = score + (daysAgo >= 30 ? 20 : 0) + (reusableFormat ? 12 : 0);
+
+      return {
+        ...direction,
+        content,
+        score,
+        priority,
+        reason:
+          score > 0
+            ? "반응이 있는 게시물이라 다른 형식으로 다시 쓰기 좋습니다."
+            : "형식 변환 여지가 있어 원소스 멀티유즈 후보로 볼 수 있습니다.",
+      };
+    })
+    .filter((candidate) => candidate.score > 0 || candidate.priority >= 20)
+    .sort((first, second) => second.priority - first.priority)
+    .slice(0, 3);
+}
+
 export function MainTab({
   accounts,
   contents,
@@ -927,6 +999,9 @@ export function MainTab({
   const [visibleMonth, setVisibleMonth] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(() => getDateKey(new Date()));
   const [selectedContentId, setSelectedContentId] = useState<string | null>(null);
+  const [selectedDetailMode, setSelectedDetailMode] = useState<"post" | "improve" | null>(null);
+  const [reminderModalContentId, setReminderModalContentId] = useState<string | null>(null);
+  const [multiUseModalContentId, setMultiUseModalContentId] = useState<string | null>(null);
   const [activeJudgement, setActiveJudgement] = useState<JudgementKey>("today");
   const [selectedDecision, setSelectedDecision] = useState<DateRecommendation | null>(null);
   const [selectedDecisionList, setSelectedDecisionList] = useState<DateRecommendation[]>([]);
@@ -980,41 +1055,51 @@ export function MainTab({
   const reminderCandidates = getReminderCandidates(
     filteredContents,
     insights,
-    selectedDate,
+    todayKey,
     missingTopic,
     leastUsedFormat,
   );
   const activeReminder = reminderCandidates[reminderIndex % Math.max(reminderCandidates.length, 1)];
-  const selectedDateRecommendationList = getCalendarRecommendations(
-    selectedDate,
-    missingTopic,
-    leastUsedFormat,
-    recentKeywords,
-    oldHighScoreContent,
-    filteredContents,
-    insights,
-  );
-  const selectedDateRecommendation = selectedDateRecommendationList[0] ??
-    getDateRecommendation(
-      selectedDate,
-      missingTopic,
-      leastUsedFormat,
-      recentKeywords,
-      oldHighScoreContent,
-      filteredContents,
-      insights,
-    );
-  const selectedDateItems = filteredContents.filter((content) => getContentDate(content) === selectedDate);
+  const activeReminderIndex = reminderCandidates.length > 0 ? reminderIndex % reminderCandidates.length : 0;
+  const multiUseCandidates = getMultiUseCandidates(filteredContents, insights);
+  const activeMultiUseCandidate = multiUseCandidates[0];
   const selectedContent = selectedContentId
     ? filteredContents.find((content) => content.id === selectedContentId)
     : undefined;
   const selectedContentInsight = selectedContent ? getLatestInsight(selectedContent, insights) : undefined;
-  const selectedDateRecommendations = selectedDateRecommendationList.map(
-    (recommendation) => `${getCalendarBadgeLabel(recommendation)} · ${recommendation.reason}`,
-  );
-  const activeDecision = selectedDecision ?? selectedDateRecommendation;
-  const activeDecisionList = selectedDecisionList.length > 0 ? selectedDecisionList : selectedDateRecommendationList;
-  const restDecision = getRestDecision(monthContents.length);
+  const reminderModalContent = reminderModalContentId
+    ? filteredContents.find((content) => content.id === reminderModalContentId)
+    : undefined;
+  const reminderModalInsight = reminderModalContent ? getLatestInsight(reminderModalContent, insights) : undefined;
+  const multiUseModalCandidate = multiUseModalContentId
+    ? multiUseCandidates.find((candidate) => candidate.content.id === multiUseModalContentId) ??
+      getMultiUseCandidates(
+        filteredContents.filter((content) => content.id === multiUseModalContentId),
+        insights,
+      )[0]
+    : undefined;
+
+  useEffect(() => {
+    if (reminderCandidates.length === 0) {
+      setReminderIndex(0);
+      return;
+    }
+
+    setReminderIndex((currentIndex) => currentIndex % reminderCandidates.length);
+  }, [reminderCandidates.length]);
+
+  useEffect(() => {
+    if (reminderCandidates.length <= 1) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setReminderIndex((currentIndex) => (currentIndex + 1) % reminderCandidates.length);
+    }, 8000);
+
+    return () => window.clearInterval(intervalId);
+  }, [reminderCandidates.length]);
+
   const scoredFilteredContents = filteredContents.filter((content) => hasInsightRecord(content, insights));
   const averageFilteredScore =
     scoredFilteredContents.length > 0
@@ -1024,6 +1109,14 @@ export function MainTab({
   const improveTarget = scoredFilteredContents
     .filter((content) => getContentScore(content, insights) < averageFilteredScore)
     .sort((first, second) => getContentScore(first, insights) - getContentScore(second, insights))[0];
+  const todayDirectionValue = todayItems.length > 0 ? "점검" : oldHighScoreContent ? "재활용" : "유지";
+  const todayDirectionSummary =
+    todayItems.length > 0 ? "올린 글의 반응을 확인하세요." : "새 글보다 흐름 점검이 좋습니다.";
+  const keywordActionLine = `${missingTopic}을 짧은 장면으로 써보세요.`;
+  const keywordSummary = monthContents.some((content) => (content.topic ?? "기타") === missingTopic)
+    ? `${missingTopic}을 다른 감정선으로 분산하세요.`
+    : keywordActionLine;
+  const improveSummary = improveTarget ? "반응 낮은 글을 다듬어보세요." : "개선 후보 없음";
   const judgementCards: Array<{
     key: JudgementKey;
     title: string;
@@ -1034,28 +1127,28 @@ export function MainTab({
     {
       key: "today",
       title: "오늘의 방향",
-      value: todayItems.length,
-      summary: todayItems[0]?.title ?? "오늘은 캘린더 흐름만 확인하세요.",
+      value: todayDirectionValue,
+      summary: todayDirectionSummary,
       detail:
         todayItems.length > 0
-          ? "오늘은 새 게시를 만들기보다 이미 올라간 게시물의 반응과 변주 가능성을 확인하는 날입니다."
-          : "오늘은 새 게시보다 캘린더의 추천 뱃지와 리마인드 후보를 보고 방향만 정리해도 좋습니다.",
+          ? "오늘은 새 게시보다 이미 올라간 글의 반응을 확인하는 날입니다."
+          : "캘린더 뱃지와 리마인드만 보고 운영 방향을 정리하세요.",
     },
     {
       key: "recommend",
-      title: "키워드 추천",
+      title: "추천 키워드",
       value: missingTopic,
-      summary: `${missingTopic} · ${leastUsedFormat}`,
-      detail: `${missingTopic} 키워드는 최근 흐름에서 적게 쓰였습니다. ${leastUsedFormat} 형식과 묶어 가볍게 다시 다루면 주제 균형을 회복하는 데 도움이 됩니다.`,
+      summary: keywordSummary,
+      detail: keywordActionLine,
     },
     {
       key: "improve",
       title: "개선 후보",
       value: improveTarget ? "1" : "0",
-      summary: improveTarget?.title ?? "개선 후보 없음",
+      summary: improveSummary,
       detail: improveTarget
-        ? `${normalizeContentType(improveTarget)} 형식의 반응 점수가 평균보다 낮습니다. 첫 문장, 저장할 이유, 메시지 선명도를 먼저 점검하세요.`
-        : "성과 기록이 더 쌓이면 개선 후보를 보여줍니다.",
+        ? `${normalizeContentType(improveTarget)} 형식의 첫 문장을 더 선명하게 다듬어보세요.`
+        : "성과 기록이 더 쌓이면 표시됩니다.",
     },
   ];
   const visibleJudgementCards = judgementCards.filter((card) =>
@@ -1063,6 +1156,42 @@ export function MainTab({
   );
   const activeJudgementCard =
     judgementCards.find((card) => card.key === activeJudgement) ?? judgementCards[0];
+  const selectedContentScore = selectedContentInsight ? getReactionScore(selectedContentInsight) : undefined;
+  const selectedContentCopy =
+    selectedContent?.caption ??
+    selectedContent?.text ??
+    selectedContent?.draftMemo ??
+    "본문 미리보기가 없습니다.";
+  const selectedContentResult = selectedContentInsight
+    ? selectedContentInsight.saves
+      ? "저장 반응 있음"
+      : selectedContentInsight.comments || selectedContentInsight.replies
+        ? "댓글 반응 있음"
+        : "반응 확인"
+    : "데이터 부족";
+  const selectedContentFixPoint = selectedContentInsight
+    ? selectedContentInsight.saves
+      ? "저장 포인트 유지"
+      : "저장 유도 보강"
+    : "성과 기록 필요";
+  const selectedContentMetricLabel = selectedContentInsight
+    ? selectedContentInsight.saves
+      ? `저장 ${selectedContentInsight.saves}`
+      : selectedContentInsight.comments || selectedContentInsight.replies
+        ? `댓글 ${selectedContentInsight.comments ?? selectedContentInsight.replies}`
+        : `반응 ${selectedContentScore}`
+    : "성과 기록 없음";
+  const selectedContentKeywordLabel = selectedContent
+    ? `${selectedContent.topic ?? "기타"} · ${normalizeContentType(selectedContent)}`
+    : "";
+  const selectedDecisionAction = selectedDecision ? getCalendarBadgeLabel(selectedDecision) : "";
+  const selectedDecisionProposal = selectedDecision
+    ? selectedDecision.type === "휴식"
+      ? "흐름 점검하기"
+      : selectedDecision.type === "재활용"
+        ? "다른 감정선으로 변주"
+        : `${selectedDecision.topic}을 ${selectedDecision.format}로`
+    : "";
 
   function updateForm<Key extends keyof ContentFormState>(key: Key, value: ContentFormState[Key]) {
     setForm((currentForm) => ({ ...currentForm, [key]: value }));
@@ -1140,6 +1269,7 @@ export function MainTab({
   function handleEdit(content: ContentItem) {
     setEditingContentId(content.id);
     setSelectedContentId(content.id);
+    setSelectedDetailMode("post");
     setSelectedDate(getContentDate(content) || selectedDate);
     setForm({
       accountId: content.accountId,
@@ -1214,6 +1344,7 @@ export function MainTab({
       </div>
 
       <div className="section-grid">
+        <aside className="operation-panel" aria-label="Operation panel">
         <div className="home-mini-grid judgement-card-grid">
           {visibleJudgementCards.map((card) => (
             <button
@@ -1224,7 +1355,13 @@ export function MainTab({
               type="button"
               onClick={() => {
                 setActiveJudgement(card.key);
-                setSelectedContentId(null);
+                if (card.key === "improve" && improveTarget) {
+                  setSelectedContentId(improveTarget.id);
+                  setSelectedDetailMode("improve");
+                } else {
+                  setSelectedContentId(null);
+                  setSelectedDetailMode(null);
+                }
                 setSelectedDecision(null);
                 setSelectedDecisionList([]);
               }}
@@ -1277,93 +1414,75 @@ export function MainTab({
           </div>
         </article>
 
+        <button
+          className="panel-card multiuse-card"
+          type="button"
+          disabled={!activeMultiUseCandidate}
+          onClick={() => {
+            if (activeMultiUseCandidate) {
+              setMultiUseModalContentId(activeMultiUseCandidate.content.id);
+            }
+          }}
+        >
+          <span>멀티유즈 후보</span>
+          <strong>{activeMultiUseCandidate?.direction ?? "후보 없음"}</strong>
+          <p>
+            {activeMultiUseCandidate?.suggestion ??
+              "성과가 쌓이면 다른 플랫폼이나 형식으로 다시 쓸 후보를 보여줍니다."}
+          </p>
+          {activeMultiUseCandidate && (
+            <div className="keyword-row">
+              <b>{activeMultiUseCandidate.platform}</b>
+              <b>{normalizeContentType(activeMultiUseCandidate.content)}</b>
+              <b>{activeMultiUseCandidate.content.topic ?? "기타"}</b>
+            </div>
+          )}
+        </button>
+
         <article className="panel-card today-reminder-card">
           <div className="card-heading reminder-summary-card">
             <div className="reminder-summary-copy">
-              <h3>오늘의 리마인드</h3>
-              <p>다시 꺼내볼 만한 과거 게시물입니다.</p>
-              <span className="badge">{reminderCandidates.length}개</span>
-            </div>
-            <div className="reminder-summary-thumb">
-              {activeReminder?.content.externalThumbnailUrl ? (
-                <img src={activeReminder.content.externalThumbnailUrl} alt="" />
-              ) : (
-                <span>{activeReminder ? platformLabels[activeReminder.content.platform] : "준비 중"}</span>
-              )}
+              <h3>리마인드</h3>
             </div>
           </div>
           {activeReminder ? (
-            <div
-              className="reminder-slide"
-              onClick={() => {
-                setSelectedDate(getContentDate(activeReminder.content) || selectedDate);
-                setSelectedContentId(activeReminder.content.id);
-                setSelectedDecision(null);
-                setSelectedDecisionList([]);
-              }}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="content-thumbnail">
+            <div className="reminder-slide" style={{ display: "flex", flexDirection: "column", gap: "10px", maxHeight: "none" }}>
+              <div
+                className="reminder-hero-visual"
+                key={activeReminder.content.id}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  aspectRatio: "1 / 1",
+                  borderRadius: "18px",
+                  overflow: "hidden",
+                  background: "rgba(94, 92, 230, 0.12)",
+                  cursor: "pointer",
+                }}
+                onClick={() => setReminderModalContentId(activeReminder.content.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setReminderModalContentId(activeReminder.content.id);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+              >
                 {activeReminder.content.externalThumbnailUrl ? (
                   <img src={activeReminder.content.externalThumbnailUrl} alt="" />
                 ) : (
                   <span>{platformLabels[activeReminder.content.platform]}</span>
                 )}
               </div>
-              <div>
-                <strong>{activeReminder.content.title}</strong>
-                <p>
-                  {activeReminder.content.caption ??
-                    activeReminder.content.text ??
-                    activeReminder.content.draftMemo ??
-                    "본문 미리보기가 없습니다."}
-                </p>
-                <div className="keyword-row">
-                  <b>{activeReminder.content.publishedDate ?? activeReminder.content.plannedDate ?? "날짜 없음"}</b>
-                  <b>{activeReminder.content.topic ?? "기타"}</b>
-                  <b>{normalizeContentType(activeReminder.content)}</b>
-                </div>
-                <p className="reminder-reason">{activeReminder.reason}</p>
-                <span className="reminder-score">{activeReminder.summary}</span>
-              </div>
-              {reminderCandidates.length > 1 && (
-                <div className="reminder-controls">
-                  <button
-                    className="secondary-button"
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setReminderIndex((currentIndex) =>
-                        (currentIndex - 1 + reminderCandidates.length) % reminderCandidates.length,
-                      );
-                    }}
-                  >
-                    이전
-                  </button>
-                  <button
-                    className="secondary-button"
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setReminderIndex((currentIndex) => (currentIndex + 1) % reminderCandidates.length);
-                    }}
-                  >
-                    다음
-                  </button>
-                </div>
-              )}
               <div className="reminder-dots">
                 {reminderCandidates.map((candidate, index) => (
                   <button
                     aria-label={`${index + 1}번째 리마인드`}
-                    className={index === reminderIndex % reminderCandidates.length ? "is-active" : ""}
+                    className={index === activeReminderIndex ? "is-active" : ""}
                     key={candidate.content.id}
                     type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setReminderIndex(index);
-                    }}
+                    onClick={() => setReminderIndex(index)}
                   />
                 ))}
               </div>
@@ -1372,6 +1491,8 @@ export function MainTab({
             <p className="empty-copy">아직 다시 꺼내볼 만한 과거 게시물이 없습니다.</p>
           )}
         </article>
+
+        </aside>
 
         <details className="panel-card panel-card--wide content-editor-card">
           <summary>{editingContentId ? "콘텐츠 수정" : "콘텐츠 직접 추가"}</summary>
@@ -1579,6 +1700,7 @@ export function MainTab({
                       );
                       setSelectedDate(day.dateKey);
                       setSelectedContentId(null);
+                      setSelectedDetailMode(null);
                       setSelectedDecision(dayRecommendations[0] ?? null);
                       setSelectedDecisionList(dayRecommendations);
                     }
@@ -1621,6 +1743,7 @@ export function MainTab({
                                 event.stopPropagation();
                                 setSelectedDate(day.dateKey);
                                 setSelectedContentId(null);
+                                setSelectedDetailMode(null);
                                 setSelectedDecision(dayRecommendation);
                                 setSelectedDecisionList(dayRecommendations);
                               }}
@@ -1636,6 +1759,7 @@ export function MainTab({
                                 event.stopPropagation();
                                 setSelectedDate(day.dateKey);
                                 setSelectedContentId(null);
+                                setSelectedDetailMode(null);
                                 setSelectedDecision(dayRecommendations[0]);
                                 setSelectedDecisionList(dayRecommendations);
                               }}
@@ -1657,6 +1781,7 @@ export function MainTab({
                           event.stopPropagation();
                           setSelectedDate(getContentDate(content) || day.dateKey);
                           setSelectedContentId(content.id);
+                          setSelectedDetailMode("post");
                           setSelectedDecision(null);
                           setSelectedDecisionList([]);
                         }}
@@ -1699,166 +1824,204 @@ export function MainTab({
         <article className="panel-card panel-card--wide date-management-card">
           <div className="card-heading">
             <div>
-              <h3>{selectedDate} 콘텐츠 관리</h3>
-              <p>날짜를 누르면 이곳에서 추가, 수정, 삭제를 바로 처리합니다.</p>
+              <h3>
+                {selectedContent
+                  ? selectedDetailMode === "improve"
+                    ? "개선 후보"
+                    : "게시물 결과"
+                  : selectedDecision
+                    ? "운영 판단"
+                    : "운영 판단"}
+              </h3>
+              <p>
+                {selectedContent
+                  ? selectedDetailMode === "improve"
+                    ? "다듬을 게시물과 이유를 확인합니다."
+                    : "게시물 성과와 보완점을 확인합니다."
+                  : selectedDecision
+                    ? "추천 뱃지의 판단 근거입니다."
+                    : "날짜나 뱃지를 누르면 판단 근거를 확인할 수 있습니다."}
+              </p>
             </div>
-            <span className="badge">{selectedDateItems.length}개</span>
+            <span className="badge">{selectedContent ? "게시물" : selectedDecision ? selectedDecision.type : selectedDate}</span>
           </div>
 
-          <div className="operation-judgement-grid">
-            <div className="operation-judgement-card">
-              <span>쉬어도 되는지</span>
-              <strong>{selectedDateItems.length > 0 ? "게시 있음" : "판단 필요"}</strong>
-              <p>{selectedDateItems.length > 0 ? "이미 올린 게시물의 성과를 확인하세요." : restDecision}</p>
-            </div>
-            <div className="operation-judgement-card">
-              <span>추천 주제</span>
-              <strong>{missingTopic}</strong>
-              <p>최근 적게 다룬 주제라 다음 소재 후보로 볼 수 있습니다.</p>
-            </div>
-            <div className="operation-judgement-card">
-              <span>추천 형식</span>
-              <strong>{leastUsedFormat}</strong>
-              <p>반복을 줄이고 콘텐츠 리듬을 바꾸는 선택지입니다.</p>
-            </div>
-            <div className="operation-judgement-card">
-              <span>참고할 과거 글</span>
-              <strong>{oldHighScoreContent?.title ?? "없음"}</strong>
-              <p>{oldHighScoreContent ? "반응이 좋았던 게시물을 변주해볼 수 있습니다." : "성과가 쌓이면 참고 후보가 표시됩니다."}</p>
-            </div>
-          </div>
-
-          {selectedContent && (
-            <div className="selected-content-detail">
-              <div className="content-thumbnail">
-                {selectedContent.externalThumbnailUrl ? (
-                  <img src={selectedContent.externalThumbnailUrl} alt="" />
+          {selectedContent ? (
+            <>
+              <div className="operation-judgement-grid">
+                {selectedDetailMode === "improve" ? (
+                  <>
+                    <div className="operation-judgement-card">
+                      <span>대상 게시물</span>
+                      <strong>{selectedContent.title}</strong>
+                      <p>{selectedContentKeywordLabel}</p>
+                    </div>
+                    <div className="operation-judgement-card">
+                      <span>낮은 지표</span>
+                      <strong>{selectedContentMetricLabel}</strong>
+                      <p>{selectedContentInsight ? "저장과 댓글을 봅니다." : "성과 입력 후 판단합니다."}</p>
+                    </div>
+                    <div className="operation-judgement-card">
+                      <span>개선 이유</span>
+                      <strong>첫 문장</strong>
+                      <p>저장할 이유를 앞에 둡니다.</p>
+                    </div>
+                    <div className="operation-judgement-card">
+                      <span>다음 보완점</span>
+                      <strong>{selectedContentFixPoint}</strong>
+                      <p>첫 문장을 더 선명하게.</p>
+                    </div>
+                  </>
                 ) : (
-                  <span>{platformLabels[selectedContent.platform]}</span>
+                  <>
+                    <div className="operation-judgement-card">
+                      <span>인사이트</span>
+                      <strong>{selectedContentInsight ? `반응 ${selectedContentScore}` : "성과 기록 없음"}</strong>
+                      <p>저장/댓글/공유를 봅니다.</p>
+                    </div>
+                    <div className="operation-judgement-card">
+                      <span>결과 해석</span>
+                      <strong>{selectedContentResult}</strong>
+                      <p>핵심 반응만 표시합니다.</p>
+                    </div>
+                    <div className="operation-judgement-card">
+                      <span>보완점</span>
+                      <strong>{selectedContentFixPoint}</strong>
+                      <p>다음 글에 반영합니다.</p>
+                    </div>
+                    <div className="operation-judgement-card">
+                      <span>키워드/형식</span>
+                      <strong>{selectedContent.topic ?? "기타"}</strong>
+                      <p>{normalizeContentType(selectedContent)}</p>
+                    </div>
+                  </>
                 )}
               </div>
-              <div className="selected-content-copy">
-                <span className="badge">{platformLabels[selectedContent.platform]}</span>
-                <h3>{selectedContent.title}</h3>
-                <p>{selectedContent.caption ?? selectedContent.text ?? selectedContent.draftMemo ?? "본문 미리보기가 없습니다."}</p>
-                <div className="insight-summary-row">
-                  <span>반응 점수 {selectedContentInsight ? getReactionScore(selectedContentInsight) : "-"}</span>
-                  <span>
-                    저장률{" "}
-                    {getRateLabel(
-                      selectedContentInsight?.saves,
-                      selectedContentInsight?.reach ?? selectedContentInsight?.views,
-                    )}
+
+              <div className="selected-content-detail">
+                <div className="content-thumbnail">
+                  {selectedContent.externalThumbnailUrl ? (
+                    <img src={selectedContent.externalThumbnailUrl} alt="" />
+                  ) : (
+                    <span>{platformLabels[selectedContent.platform]}</span>
+                  )}
+                </div>
+                <div className="selected-content-copy">
+                  <span className="badge">
+                    {selectedDetailMode === "improve" ? "개선 대상" : platformLabels[selectedContent.platform]}
                   </span>
-                  <span>{hasInsightRecord(selectedContent, insights) ? "성과 기록 있음" : "성과 기록 없음"}</span>
-                </div>
-                <div className="keyword-row">
-                  <b>{accountMap.get(selectedContent.accountId)?.displayName ?? "계정 없음"}</b>
-                  <b>{selectedContent.publishedDate ?? selectedContent.plannedDate ?? "날짜 없음"}</b>
-                  <b>{normalizeContentType(selectedContent)}</b>
-                  <b>{selectedContent.topic ?? "기타"}</b>
-                  {getContentKeywords(selectedContent).slice(0, 3).map((keyword) => (
-                    <b key={keyword}>{keyword}</b>
-                  ))}
-                </div>
-                <div className="account-card__actions">
-                  <button className="secondary-button" type="button" disabled>
-                    인사이트 확인
-                  </button>
-                  <button className="secondary-button" type="button" onClick={() => handleEdit(selectedContent)}>
-                    수정
-                  </button>
-                  <button className="danger-button" type="button" onClick={() => handleDelete(selectedContent.id)}>
-                    삭제
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {!selectedContent && (
-            <div className="selected-decision-detail">
-              <span className={`calendar-recommendation-chip calendar-recommendation-chip--${activeDecision.type}`}>
-                {activeDecision.type}
-              </span>
-              <h3>{activeDecision.title}</h3>
-              <p>{activeDecision.reason}</p>
-              <div className="decision-detail-grid">
-                <div>
-                  <span>추천 주제</span>
-                  <strong>{activeDecision.topic}</strong>
-                </div>
-                <div>
-                  <span>추천 형식</span>
-                  <strong>{activeDecision.format}</strong>
-                </div>
-                <div>
-                  <span>기준 데이터</span>
-                  <strong>{activeDecision.basis}</strong>
-                </div>
-                <div>
-                  <span>기대 효과</span>
-                  <strong>{activeDecision.expectedEffect}</strong>
-                </div>
-              </div>
-              <div className="keyword-row">
-                {activeDecision.tags.slice(0, 5).map((tag) => (
-                  <b key={tag}>{tag}</b>
-                ))}
-              </div>
-              {activeDecisionList.length > 1 && (
-                <div className="same-day-recommendations">
-                  <span>같은 날짜의 다른 추천</span>
-                  {activeDecisionList.map((recommendation) => (
-                    <button
-                      className={`calendar-recommendation-chip calendar-recommendation-chip--${recommendation.type}`}
-                      key={recommendation.title}
-                      type="button"
-                      onClick={() => setSelectedDecision(recommendation)}
-                    >
-                      {getCalendarBadgeLabel(recommendation)}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <p className="decision-caution">{activeDecision.caution}</p>
-              {oldHighScoreContent && activeDecision.type === "재활용" && (
-                <div className="date-content-card">
-                  <strong>{oldHighScoreContent.title}</strong>
-                  <p>참고할 과거 게시물 · 반응 점수 {getContentScore(oldHighScoreContent, insights)}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {selectedDateItems.length > 0 ? (
-            <div className="date-content-strip">
-              {selectedDateItems.map((content) => (
-                <div className="date-content-card" key={content.id}>
-                  <strong>{content.title}</strong>
-                  <p>
-                    {platformLabels[content.platform]} · {normalizeContentType(content)} ·{" "}
-                    {content.topic ?? "기타"}
-                  </p>
+                  <h3>{selectedContent.title}</h3>
+                  <p>{selectedContentCopy}</p>
+                  <div className="insight-summary-row">
+                    <span>반응 {selectedContentInsight ? getReactionScore(selectedContentInsight) : "-"}</span>
+                    <span>도달 {selectedContentInsight?.reach ?? "-"}</span>
+                    <span>좋아요 {selectedContentInsight?.likes ?? "-"}</span>
+                    <span>댓글 {selectedContentInsight?.comments ?? selectedContentInsight?.replies ?? "-"}</span>
+                    <span>저장 {selectedContentInsight?.saves ?? "-"}</span>
+                    <span>공유 {selectedContentInsight?.shares ?? selectedContentInsight?.reposts ?? "-"}</span>
+                  </div>
+                  <div className="keyword-row">
+                    <b>{accountMap.get(selectedContent.accountId)?.displayName ?? "계정 없음"}</b>
+                    <b>{selectedContent.publishedDate ?? selectedContent.plannedDate ?? "날짜 없음"}</b>
+                    <b>{normalizeContentType(selectedContent)}</b>
+                    <b>{selectedContent.topic ?? "기타"}</b>
+                    {getContentKeywords(selectedContent).slice(0, 3).map((keyword) => (
+                      <b key={keyword}>{keyword}</b>
+                    ))}
+                  </div>
                   <div className="account-card__actions">
-                    <button className="secondary-button" type="button" onClick={() => handleEdit(content)}>
+                    <button className="secondary-button" type="button" onClick={() => handleEdit(selectedContent)}>
                       수정
                     </button>
-                    <button className="danger-button" type="button" onClick={() => handleDelete(content.id)}>
+                    <button className="danger-button" type="button" onClick={() => handleDelete(selectedContent.id)}>
                       삭제
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            </>
+          ) : selectedDecision ? (
+            <>
+              <div className="operation-judgement-grid">
+                <div className="operation-judgement-card">
+                  <span>추천 내용</span>
+                  <strong>{selectedDecisionAction}</strong>
+                  <p>오늘 실행할 형식입니다.</p>
+                </div>
+                <div className="operation-judgement-card">
+                  <span>추천 키워드</span>
+                  <strong>{selectedDecision.topic}</strong>
+                  <p>오늘 쓸 감정선입니다.</p>
+                </div>
+                <div className="operation-judgement-card">
+                  <span>기준</span>
+                  <strong>{selectedDecision.basis}</strong>
+                  <p>월간 흐름 기준입니다.</p>
+                </div>
+                <div className="operation-judgement-card">
+                  <span>제안</span>
+                  <strong>{selectedDecisionProposal}</strong>
+                  <p>바로 실행할 방향입니다.</p>
+                </div>
+              </div>
+
+              <div className="selected-decision-detail">
+                <span className={`calendar-recommendation-chip calendar-recommendation-chip--${selectedDecision.type}`}>
+                  {selectedDecision.type}
+                </span>
+                <h3>{selectedDecision.title}</h3>
+                <p>{selectedDecision.reason}</p>
+                <div className="decision-detail-grid">
+                  <div>
+                    <span>추천 내용</span>
+                    <strong>{selectedDecisionAction}</strong>
+                  </div>
+                  <div>
+                    <span>추천 키워드</span>
+                    <strong>{selectedDecision.topic}</strong>
+                  </div>
+                  <div>
+                    <span>기준</span>
+                    <strong>{selectedDecision.basis}</strong>
+                  </div>
+                  <div>
+                    <span>제안</span>
+                    <strong>{selectedDecisionProposal}</strong>
+                  </div>
+                </div>
+                <div className="keyword-row">
+                  {selectedDecision.tags.slice(0, 5).map((tag) => (
+                    <b key={tag}>{tag}</b>
+                  ))}
+                </div>
+                {selectedDecisionList.length > 1 && (
+                  <div className="same-day-recommendations">
+                    <span>같은 날짜의 다른 추천</span>
+                    {selectedDecisionList.map((recommendation) => (
+                      <button
+                        className={`calendar-recommendation-chip calendar-recommendation-chip--${recommendation.type}`}
+                        key={recommendation.title}
+                        type="button"
+                        onClick={() => setSelectedDecision(recommendation)}
+                      >
+                        {getCalendarBadgeLabel(recommendation)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p className="decision-caution">{selectedDecision.caution}</p>
+                {oldHighScoreContent && selectedDecision.type === "재활용" && (
+                  <div className="date-content-card">
+                    <strong>{oldHighScoreContent.title}</strong>
+                    <p>참고할 과거 게시물 · 반응 점수 {getContentScore(oldHighScoreContent, insights)}</p>
+                  </div>
+                )}
+              </div>
+            </>
           ) : (
-            <div className="date-recommendation-card">
-              <span className="badge">{selectedDateRecommendation.type}</span>
-              <strong>{selectedDateRecommendation.title}</strong>
-              <strong>이 날짜에는 아직 콘텐츠가 없습니다.</strong>
-              {selectedDateRecommendations.map((recommendation) => (
-                <p key={recommendation}>{recommendation}</p>
-              ))}
+            <div className="selected-decision-detail selected-decision-detail--empty">
+              <h3>운영 판단</h3>
+              <p>날짜나 뱃지를 누르면 판단 근거를 확인할 수 있습니다.</p>
             </div>
           )}
 
@@ -1985,6 +2148,113 @@ export function MainTab({
           </div>
         </article>
       </div>
+      {reminderModalContent && (
+        <div className="modal-backdrop reminder-modal-backdrop" role="dialog" aria-modal="true">
+          <article className="panel-card reminder-modal-card">
+            <div className="card-heading">
+              <div>
+                <h3>리마인드 상세</h3>
+                <p>다시 꺼내볼 만한 이유를 확인합니다.</p>
+              </div>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => setReminderModalContentId(null)}
+              >
+                닫기
+              </button>
+            </div>
+            <div className="selected-content-detail">
+              <div className="content-thumbnail">
+                {reminderModalContent.externalThumbnailUrl ? (
+                  <img src={reminderModalContent.externalThumbnailUrl} alt="" />
+                ) : (
+                  <span>{platformLabels[reminderModalContent.platform]}</span>
+                )}
+              </div>
+              <div className="selected-content-copy">
+                <span className="badge">{platformLabels[reminderModalContent.platform]}</span>
+                <h3>{reminderModalContent.title}</h3>
+                <p>
+                  {reminderModalContent.caption ??
+                    reminderModalContent.text ??
+                    reminderModalContent.draftMemo ??
+                    "본문 미리보기가 없습니다."}
+                </p>
+                <div className="keyword-row">
+                  <b>{reminderModalContent.publishedDate ?? reminderModalContent.plannedDate ?? "날짜 없음"}</b>
+                  <b>{normalizeContentType(reminderModalContent)}</b>
+                  <b>{reminderModalContent.topic ?? "기타"}</b>
+                  {getContentKeywords(reminderModalContent).slice(0, 3).map((keyword) => (
+                    <b key={keyword}>{keyword}</b>
+                  ))}
+                </div>
+                <div className="insight-summary-row">
+                  <span>반응 {reminderModalInsight ? getReactionScore(reminderModalInsight) : "-"}</span>
+                  <span>도달 {reminderModalInsight?.reach ?? "-"}</span>
+                  <span>저장 {reminderModalInsight?.saves ?? "-"}</span>
+                  <span>댓글 {reminderModalInsight?.comments ?? reminderModalInsight?.replies ?? "-"}</span>
+                  <span>공유 {reminderModalInsight?.shares ?? reminderModalInsight?.reposts ?? "-"}</span>
+                </div>
+                <p className="decision-caution">
+                  30일 이상 지난 게시물 중 반응 흐름과 이번 달 부족한 주제를 함께 보고 고른 후보입니다.
+                </p>
+              </div>
+            </div>
+          </article>
+        </div>
+      )}
+      {multiUseModalCandidate && (
+        <div className="modal-backdrop reminder-modal-backdrop" role="dialog" aria-modal="true">
+          <article className="panel-card reminder-modal-card">
+            <div className="card-heading">
+              <div>
+                <h3>멀티유즈 후보</h3>
+                <p>이미 올린 게시물을 다른 형식으로 다시 쓰는 방향입니다.</p>
+              </div>
+              <button className="secondary-button" type="button" onClick={() => setMultiUseModalContentId(null)}>
+                닫기
+              </button>
+            </div>
+            <div className="selected-content-detail">
+              <div className="content-thumbnail">
+                {multiUseModalCandidate.content.externalThumbnailUrl ? (
+                  <img src={multiUseModalCandidate.content.externalThumbnailUrl} alt="" />
+                ) : (
+                  <span>{platformLabels[multiUseModalCandidate.content.platform]}</span>
+                )}
+              </div>
+              <div className="selected-content-copy">
+                <span className="badge">{multiUseModalCandidate.direction}</span>
+                <h3>{multiUseModalCandidate.content.title}</h3>
+                <p>
+                  {multiUseModalCandidate.content.caption ??
+                    multiUseModalCandidate.content.text ??
+                    multiUseModalCandidate.content.draftMemo ??
+                    "본문 미리보기가 없습니다."}
+                </p>
+                <div className="decision-detail-grid">
+                  <div className="operation-judgement-card">
+                    <span>추천 플랫폼</span>
+                    <strong>{multiUseModalCandidate.platform}</strong>
+                    <p>{multiUseModalCandidate.suggestion}</p>
+                  </div>
+                  <div className="operation-judgement-card">
+                    <span>왜 다시 쓸까</span>
+                    <strong>반응 {multiUseModalCandidate.score}</strong>
+                    <p>{multiUseModalCandidate.reason}</p>
+                  </div>
+                  <div className="operation-judgement-card">
+                    <span>한 줄 실행</span>
+                    <strong>{normalizeContentType(multiUseModalCandidate.content)}</strong>
+                    <p>{multiUseModalCandidate.suggestion}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      )}
     </section>
   );
 }
