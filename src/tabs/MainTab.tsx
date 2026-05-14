@@ -1181,10 +1181,26 @@ export function MainTab({
   const todayDirectionSummary =
     todayItems.length > 0 ? "올린 글의 반응을 확인하세요." : "새 글보다 흐름 점검이 좋습니다.";
   const keywordUsage = getKeywordUsage(monthContents);
-  const maxKeywordUsage = Math.max(...keywordUsage.map((item) => item.count), 1);
   const recommendedKeywordUseCount = monthContents.filter((content) => {
     return (content.topic ?? "기타") === missingTopic || getContentKeywords(content).includes(missingTopic);
   }).length;
+  const keywordDistributionItems = [
+    ...keywordUsage.filter((item) => item.keyword !== missingTopic),
+    { keyword: missingTopic, count: recommendedKeywordUseCount },
+  ]
+    .sort((first, second) => {
+      if (first.keyword === missingTopic) {
+        return -1;
+      }
+
+      if (second.keyword === missingTopic) {
+        return 1;
+      }
+
+      return second.count - first.count || first.keyword.localeCompare(second.keyword);
+    })
+    .slice(0, 6);
+  const maxKeywordUsage = Math.max(...keywordDistributionItems.map((item) => item.count), 1);
   const repeatedKeywords = recentKeywords.slice(0, 3);
   const relatedKeywordContents = filteredContents
     .filter((content) => {
@@ -1193,6 +1209,17 @@ export function MainTab({
     .sort((first, second) => new Date(getContentDate(second)).getTime() - new Date(getContentDate(first)).getTime())
     .slice(0, 3);
   const keywordActionLine = `${missingTopic}을 짧은 장면으로 써보세요.`;
+  const keywordEvidenceItems = [
+    recommendedKeywordUseCount <= 1
+      ? "이번 달 적게 쓴 주제입니다."
+      : `${recommendedKeywordUseCount}회 사용해 다른 각도가 필요합니다.`,
+    repeatedKeywords.length > 0
+      ? `${repeatedKeywords[0]} 흐름이 반복돼 균형이 필요합니다.`
+      : "최근 반복 키워드는 크지 않습니다.",
+    relatedKeywordContents.length > 0
+      ? "과거 반응이 있는 글을 참고할 수 있습니다."
+      : "새 감정선으로 테스트하기 좋습니다.",
+  ].slice(0, 3);
   const keywordSummary = monthContents.some((content) => (content.topic ?? "기타") === missingTopic)
     ? `${missingTopic}을 다른 감정선으로 분산하세요.`
     : keywordActionLine;
@@ -2395,46 +2422,37 @@ export function MainTab({
       {isKeywordModalOpen && (
         <div className="modal-backdrop reminder-modal-backdrop" role="dialog" aria-modal="true">
           <article className="panel-card reminder-modal-card insight-modal-card">
-            <div className="card-heading">
+            <div className="card-heading keyword-modal-hero">
               <div>
                 <h3>추천 키워드 근거</h3>
+                <strong>{missingTopic}</strong>
                 <p>{keywordActionLine}</p>
               </div>
               <button className="secondary-button" type="button" onClick={() => setIsKeywordModalOpen(false)}>
                 닫기
               </button>
             </div>
-            <div className="decision-detail-grid">
-              <div className="operation-judgement-card">
-                <span>추천 키워드</span>
-                <strong>{missingTopic}</strong>
-                <p>오늘 쓸 감정선입니다.</p>
-              </div>
-              <div className="operation-judgement-card">
-                <span>이번 달 사용</span>
-                <strong>{recommendedKeywordUseCount}회</strong>
-                <p>월간 콘텐츠 기준입니다.</p>
-              </div>
-              <div className="operation-judgement-card">
-                <span>최근 반복</span>
-                <strong>{repeatedKeywords.join(" · ") || "없음"}</strong>
-                <p>분산할 키워드입니다.</p>
-              </div>
-              <div className="operation-judgement-card">
-                <span>부족한 키워드</span>
-                <strong>{missingTopic}</strong>
-                <p>이번 주 보강 후보입니다.</p>
-              </div>
+            <div className="keyword-evidence-list">
+              <span>추천 근거</span>
+              <ol>
+                {keywordEvidenceItems.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ol>
             </div>
-            {keywordUsage.length > 0 ? (
-              <div className="keyword-distribution">
-                {keywordUsage.map((item) => (
+            {keywordDistributionItems.length > 0 ? (
+              <div className="keyword-distribution" aria-label="키워드 분포">
+                <div className="keyword-distribution__header">
+                  <span>키워드 분포</span>
+                  <b>이번 달 기준</b>
+                </div>
+                {keywordDistributionItems.map((item) => (
                   <div className={`keyword-bar-row${item.keyword === missingTopic ? " is-recommended" : ""}`} key={item.keyword}>
                     <span>{item.keyword}</span>
                     <div className="keyword-bar-track" aria-hidden="true">
-                      <i style={{ width: `${Math.max(8, (item.count / maxKeywordUsage) * 100)}%` }} />
+                      <i style={{ width: `${Math.max(item.count === 0 ? 0 : 14, (item.count / maxKeywordUsage) * 100)}%` }} />
                     </div>
-                    <b>{item.count}</b>
+                    <b>{item.count}회</b>
                   </div>
                 ))}
               </div>
@@ -2458,8 +2476,12 @@ export function MainTab({
                     }}
                   >
                     <strong>{content.title}</strong>
+                    <em>
+                      {content.caption ?? content.text ?? content.draftMemo ?? "요약이 없습니다."}
+                    </em>
                     <p>
-                      {content.publishedDate ?? content.plannedDate ?? "날짜 없음"} · {normalizeContentType(content)}
+                      {content.publishedDate ?? content.plannedDate ?? "날짜 없음"} · {platformLabels[content.platform]} ·{" "}
+                      {normalizeContentType(content)}
                     </p>
                   </button>
                 ))
