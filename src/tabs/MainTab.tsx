@@ -660,9 +660,8 @@ function shouldShowDateRecommendation(dateKey: string, contents: ContentItem[]) 
   const targetTime = new Date(dateKey).getTime();
   const dayOfMonth = new Date(dateKey).getDate();
   const dayOfWeek = new Date(dateKey).getDay();
-  const monthlyLevel = getMonthlyOperationLevel(
-    contents.filter((content) => getContentDate(content).slice(0, 7) === dateKey.slice(0, 7)).length,
-  );
+  const monthContentCount = contents.filter((content) => getContentDate(content).slice(0, 7) === dateKey.slice(0, 7)).length;
+  const monthlyLevel = getMonthlyOperationLevel(monthContentCount);
   const postedTimes = contents
     .map((content) => getContentDate(content))
     .filter(Boolean)
@@ -672,6 +671,10 @@ function shouldShowDateRecommendation(dateKey: string, contents: ContentItem[]) 
     .filter((time) => time < targetTime)
     .map((time) => Math.round((targetTime - time) / (1000 * 60 * 60 * 24)))
     .sort((first, second) => first - second)[0];
+
+  if (dayOfWeek === 0 && monthContentCount > 0) {
+    return true;
+  }
 
   if (previousPostGap === 1) {
     return monthlyLevel === "low" ? dayOfMonth % 3 === 0 : monthlyLevel === "overloaded" || dayOfWeek === 0;
@@ -801,7 +804,8 @@ function getCalendarRecommendations(
   const shouldRecommendRest =
     monthlyLevel === "overloaded" ||
     (dayOfWeek === 0 &&
-      (monthlyLevel === "active" ||
+      (monthCount > 0 ||
+        monthlyLevel === "active" ||
         recentThreeDayContentCount >= 2 ||
         weekContents.length >= 2 ||
         (monthlyLevel === "low" && monthCount >= 6 && dayOfMonth >= 24)));
@@ -1280,6 +1284,7 @@ export function MainTab({
   const [selectedDecision, setSelectedDecision] = useState<DateRecommendation | null>(null);
   const [selectedDecisionList, setSelectedDecisionList] = useState<DateRecommendation[]>([]);
   const [reminderIndex, setReminderIndex] = useState(0);
+  const [isReminderDissolving, setIsReminderDissolving] = useState(false);
 
   const accountMap = useMemo(
     () => new Map(accounts.map((account) => [account.id, account])),
@@ -1372,11 +1377,27 @@ export function MainTab({
     }
 
     const intervalId = window.setInterval(() => {
-      setReminderIndex((currentIndex) => (currentIndex + 1) % reminderCandidates.length);
+      setIsReminderDissolving(true);
+      window.setTimeout(() => {
+        setReminderIndex((currentIndex) => (currentIndex + 1) % reminderCandidates.length);
+        setIsReminderDissolving(false);
+      }, 420);
     }, 8000);
 
     return () => window.clearInterval(intervalId);
   }, [reminderCandidates.length]);
+
+  function selectReminderIndex(index: number) {
+    if (index === activeReminderIndex) {
+      return;
+    }
+
+    setIsReminderDissolving(true);
+    window.setTimeout(() => {
+      setReminderIndex(index);
+      setIsReminderDissolving(false);
+    }, 420);
+  }
 
   const scoredFilteredContents = filteredContents.filter((content) => hasInsightRecord(content, insights));
   const averageFilteredScore =
@@ -1780,7 +1801,10 @@ export function MainTab({
             </div>
           </div>
           {activeReminder ? (
-            <div className="reminder-slide" style={{ display: "flex", flexDirection: "column", gap: "10px", maxHeight: "none" }}>
+            <div
+              className={`reminder-slide${isReminderDissolving ? " reminder-slide--dissolving" : ""}`}
+              style={{ display: "flex", flexDirection: "column", gap: "10px", maxHeight: "none" }}
+            >
               <div
                 className="reminder-hero-visual"
                 key={activeReminder.content.id}
@@ -1816,7 +1840,7 @@ export function MainTab({
                     className={index === activeReminderIndex ? "is-active" : ""}
                     key={candidate.content.id}
                     type="button"
-                    onClick={() => setReminderIndex(index)}
+                    onClick={() => selectReminderIndex(index)}
                   />
                 ))}
               </div>

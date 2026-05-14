@@ -3494,6 +3494,17 @@ textarea {
   outline: none;
 }
 
+.reminder-slide .reminder-hero-visual,
+.reminder-slide .reminder-hero-visual img {
+  transition: opacity 900ms ease, transform 900ms ease, filter 900ms ease;
+}
+
+.reminder-slide--dissolving .reminder-hero-visual {
+  opacity: 0.18;
+  transform: scale(0.992);
+  filter: saturate(0.94);
+}
+
 .reminder-slide:hover .content-thumbnail,
 .reminder-slide:focus-visible .content-thumbnail {
   transform: translateY(-1px);
