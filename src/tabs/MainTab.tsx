@@ -1279,6 +1279,7 @@ export function MainTab({
   const [reminderModalContentId, setReminderModalContentId] = useState<string | null>(null);
   const [multiUseModalContentId, setMultiUseModalContentId] = useState<string | null>(null);
   const [isImproveModalOpen, setIsImproveModalOpen] = useState(false);
+  const [selectedImproveCandidateId, setSelectedImproveCandidateId] = useState<string | null>(null);
   const [isKeywordModalOpen, setIsKeywordModalOpen] = useState(false);
   const [activeJudgement, setActiveJudgement] = useState<JudgementKey>("today");
   const [selectedDecision, setSelectedDecision] = useState<DateRecommendation | null>(null);
@@ -1387,6 +1388,24 @@ export function MainTab({
     return () => window.clearInterval(intervalId);
   }, [reminderCandidates.length]);
 
+  useEffect(() => {
+    const hasOpenModal =
+      Boolean(reminderModalContentId) || Boolean(multiUseModalContentId) || isImproveModalOpen || isKeywordModalOpen;
+
+    if (!hasOpenModal) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeAllModals();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [reminderModalContentId, multiUseModalContentId, isImproveModalOpen, isKeywordModalOpen]);
+
   function selectReminderIndex(index: number) {
     if (index === activeReminderIndex) {
       return;
@@ -1421,6 +1440,8 @@ export function MainTab({
     .filter((candidate) => candidate.score < averageFilteredScore)
     .sort((first, second) => first.score - second.score)
     .slice(0, 6);
+  const activeImproveModalCandidate =
+    improveCandidates.find((candidate) => candidate.content.id === selectedImproveCandidateId) ?? improveCandidates[0];
   const improveTarget = improveCandidates[0]?.content;
   const todayDirectionValue = todayItems.length > 0 ? "점검" : oldHighScoreContent ? "재활용" : "유지";
   const todayDirectionSummary =
@@ -1520,12 +1541,12 @@ export function MainTab({
       : selectedContentInsight.comments || selectedContentInsight.replies
         ? "댓글 반응 있음"
         : "반응 확인"
-    : "데이터 부족";
+    : "반응 데이터 부족";
   const selectedContentFixPoint = selectedContentInsight
     ? selectedContentInsight.saves
-      ? "저장 포인트 유지"
+      ? "저장 반응 유지"
       : "저장 유도 보강"
-    : "성과 기록 필요";
+    : "성과 기록 없음";
   const selectedContentMetricLabel = selectedContentInsight
     ? selectedContentInsight.saves
       ? `저장 ${selectedContentInsight.saves}`
@@ -1544,6 +1565,13 @@ export function MainTab({
         ? "다른 감정선으로 변주"
         : `${selectedDecision.topic}을 ${selectedDecision.format}로`
     : "";
+
+  function closeAllModals() {
+    setReminderModalContentId(null);
+    setMultiUseModalContentId(null);
+    setIsImproveModalOpen(false);
+    setIsKeywordModalOpen(false);
+  }
 
   function updateForm<Key extends keyof ContentFormState>(key: Key, value: ContentFormState[Key]) {
     setForm((currentForm) => ({ ...currentForm, [key]: value }));
@@ -1708,6 +1736,7 @@ export function MainTab({
               onClick={() => {
                 setActiveJudgement(card.key);
                 if (card.key === "improve") {
+                  setSelectedImproveCandidateId(improveCandidates[0]?.content.id ?? null);
                   setIsImproveModalOpen(true);
                 } else if (card.key === "recommend") {
                   setIsKeywordModalOpen(true);
@@ -2214,7 +2243,7 @@ export function MainTab({
                     <div className="operation-judgement-card">
                       <span>낮은 지표</span>
                       <strong>{selectedContentMetricLabel}</strong>
-                      <p>{selectedContentInsight ? "저장과 댓글을 봅니다." : "성과 입력 후 판단합니다."}</p>
+                      <p>{selectedContentInsight ? "저장과 댓글을 봅니다." : "도달/저장/댓글을 입력하면 분석됩니다."}</p>
                     </div>
                     <div className="operation-judgement-card">
                       <span>개선 이유</span>
@@ -2224,7 +2253,11 @@ export function MainTab({
                     <div className="operation-judgement-card">
                       <span>다음 보완점</span>
                       <strong>{selectedContentFixPoint}</strong>
-                      <p>첫 문장을 더 선명하게.</p>
+                      <p>
+                        {selectedContentInsight?.saves
+                          ? "저장된 이유를 다음 글에 살리세요."
+                          : "첫 문장을 더 선명하게."}
+                      </p>
                     </div>
                   </>
                 ) : (
@@ -2232,17 +2265,21 @@ export function MainTab({
                     <div className="operation-judgement-card">
                       <span>인사이트</span>
                       <strong>{selectedContentInsight ? `반응 ${selectedContentScore}` : "성과 기록 없음"}</strong>
-                      <p>저장/댓글/공유를 봅니다.</p>
+                      <p>{selectedContentInsight ? "저장/댓글/공유를 봅니다." : "도달/저장/댓글을 입력하면 분석됩니다."}</p>
                     </div>
                     <div className="operation-judgement-card">
                       <span>결과 해석</span>
                       <strong>{selectedContentResult}</strong>
-                      <p>핵심 반응만 표시합니다.</p>
+                      <p>{selectedContentInsight ? "핵심 반응만 표시합니다." : "핵심 수치가 없어 결과 해석을 보류합니다."}</p>
                     </div>
                     <div className="operation-judgement-card">
                       <span>보완점</span>
                       <strong>{selectedContentFixPoint}</strong>
-                      <p>다음 글에 반영합니다.</p>
+                      <p>
+                        {selectedContentInsight?.saves
+                          ? "저장된 이유를 다음 글에 살리세요."
+                          : "다음 글에 반영합니다."}
+                      </p>
                     </div>
                     <div className="operation-judgement-card">
                       <span>키워드/형식</span>
@@ -2299,9 +2336,13 @@ export function MainTab({
             <>
               <div className="operation-judgement-grid">
                 <div className="operation-judgement-card">
-                  <span>추천 내용</span>
+                  <span>{selectedDecision.type === "휴식" ? "휴식 이유" : "추천 내용"}</span>
                   <strong>{selectedDecisionAction}</strong>
-                  <p>오늘 실행할 형식입니다.</p>
+                  <p>
+                    {selectedDecision.type === "휴식"
+                      ? "최근 게시 흐름이 충분합니다."
+                      : "오늘 실행할 형식입니다."}
+                  </p>
                 </div>
                 <div className="operation-judgement-card">
                   <span>추천 키워드</span>
@@ -2314,9 +2355,13 @@ export function MainTab({
                   <p>월간 흐름 기준입니다.</p>
                 </div>
                 <div className="operation-judgement-card">
-                  <span>제안</span>
+                  <span>{selectedDecision.type === "휴식" ? "오늘 할 일" : "제안"}</span>
                   <strong>{selectedDecisionProposal}</strong>
-                  <p>바로 실행할 방향입니다.</p>
+                  <p>
+                    {selectedDecision.type === "휴식"
+                      ? "성과를 확인하고 다음 글감을 정리하세요."
+                      : "바로 실행할 방향입니다."}
+                  </p>
                 </div>
               </div>
 
@@ -2376,7 +2421,7 @@ export function MainTab({
           ) : (
             <div className="selected-decision-detail selected-decision-detail--empty">
               <h3>운영 판단</h3>
-              <p>날짜나 뱃지를 누르면 판단 근거를 확인할 수 있습니다.</p>
+              <p>아직 정해진 콘텐츠가 없습니다. 빈칸은 휴식과 다르며, 휴식은 별도 뱃지로 표시됩니다.</p>
             </div>
           )}
 
@@ -2504,8 +2549,8 @@ export function MainTab({
         </article>
       </div>
       {reminderModalContent && (
-        <div className="modal-backdrop reminder-modal-backdrop" role="dialog" aria-modal="true">
-          <article className="panel-card reminder-modal-card">
+        <div className="modal-backdrop reminder-modal-backdrop" role="dialog" aria-modal="true" onClick={closeAllModals}>
+          <article className="panel-card reminder-modal-card" onClick={(event) => event.stopPropagation()}>
             <div className="card-heading">
               <div>
                 <h3>리마인드 상세</h3>
@@ -2560,8 +2605,8 @@ export function MainTab({
         </div>
       )}
       {multiUseModalCandidate && (
-        <div className="modal-backdrop reminder-modal-backdrop" role="dialog" aria-modal="true">
-          <article className="panel-card reminder-modal-card">
+        <div className="modal-backdrop reminder-modal-backdrop" role="dialog" aria-modal="true" onClick={closeAllModals}>
+          <article className="panel-card reminder-modal-card" onClick={(event) => event.stopPropagation()}>
             <div className="card-heading">
               <div>
                 <h3>멀티유즈 후보</h3>
@@ -2616,8 +2661,8 @@ export function MainTab({
         </div>
       )}
       {isImproveModalOpen && (
-        <div className="modal-backdrop reminder-modal-backdrop" role="dialog" aria-modal="true">
-          <article className="panel-card reminder-modal-card insight-modal-card">
+        <div className="modal-backdrop reminder-modal-backdrop" role="dialog" aria-modal="true" onClick={closeAllModals}>
+          <article className="panel-card reminder-modal-card insight-modal-card improve-modal-card" onClick={(event) => event.stopPropagation()}>
             <div className="card-heading">
               <div>
                 <h3>개선 후보 목록</h3>
@@ -2634,34 +2679,70 @@ export function MainTab({
               <span>첫 문장 개선 여지</span>
             </div>
             {improveCandidates.length > 0 ? (
-              <div className="insight-modal-list">
-                {improveCandidates.map((candidate) => (
-                  <button
-                    className="insight-list-button"
-                    key={candidate.content.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedContentId(candidate.content.id);
-                      setSelectedDetailMode("improve");
-                      setSelectedDecision(null);
-                      setSelectedDecisionList([]);
-                      setActiveJudgement("improve");
-                      setSelectedDate(getContentDate(candidate.content) || selectedDate);
-                      setIsImproveModalOpen(false);
-                    }}
-                  >
-                    <div>
-                      <strong>{candidate.content.title}</strong>
-                      <p>{candidate.reason}</p>
+              <div className="improve-modal-layout">
+                <div className="insight-modal-list improve-modal-list" aria-label="개선 후보 목록">
+                  {improveCandidates.map((candidate) => (
+                    <button
+                      className={`insight-list-button${
+                        activeImproveModalCandidate?.content.id === candidate.content.id ? " insight-list-button--active" : ""
+                      }`}
+                      key={candidate.content.id}
+                      type="button"
+                      onClick={() => setSelectedImproveCandidateId(candidate.content.id)}
+                    >
+                      <div>
+                        <strong>{candidate.content.title}</strong>
+                        <p>{candidate.reason}</p>
+                      </div>
+                      <div className="keyword-row">
+                        <b>{candidate.content.publishedDate ?? candidate.content.plannedDate ?? "날짜 없음"}</b>
+                        <b>{platformLabels[candidate.content.platform]}</b>
+                        <b>{normalizeContentType(candidate.content)}</b>
+                        <b>{candidate.metric}</b>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                {activeImproveModalCandidate && (
+                  <div className="improve-modal-detail">
+                    <span className="badge">선택한 후보</span>
+                    <h3>{activeImproveModalCandidate.content.title}</h3>
+                    <p>
+                      {activeImproveModalCandidate.content.caption ??
+                        activeImproveModalCandidate.content.text ??
+                        activeImproveModalCandidate.content.draftMemo ??
+                        "요약이 없습니다."}
+                    </p>
+                    <div className="operation-judgement-grid">
+                      <div className="operation-judgement-card">
+                        <span>낮은 지표</span>
+                        <strong>{activeImproveModalCandidate.metric}</strong>
+                        <p>핵심 반응을 기준으로 봅니다.</p>
+                      </div>
+                      <div className="operation-judgement-card">
+                        <span>개선 이유</span>
+                        <strong>{normalizeContentType(activeImproveModalCandidate.content)}</strong>
+                        <p>{activeImproveModalCandidate.reason}</p>
+                      </div>
+                      <div className="operation-judgement-card">
+                        <span>다음 보완점</span>
+                        <strong>
+                          {activeImproveModalCandidate.insight?.saves ? "저장 반응 유지" : "첫 문장 보강"}
+                        </strong>
+                        <p>
+                          {activeImproveModalCandidate.insight?.saves
+                            ? "저장된 이유를 다음 글에 살리세요."
+                            : "저장할 이유를 앞에 두세요."}
+                        </p>
+                      </div>
+                      <div className="operation-judgement-card">
+                        <span>키워드/태그</span>
+                        <strong>{activeImproveModalCandidate.content.topic ?? "기타"}</strong>
+                        <p>{getContentKeywords(activeImproveModalCandidate.content).slice(0, 3).join(" · ") || "키워드 없음"}</p>
+                      </div>
                     </div>
-                    <div className="keyword-row">
-                      <b>{candidate.content.publishedDate ?? candidate.content.plannedDate ?? "날짜 없음"}</b>
-                      <b>{platformLabels[candidate.content.platform]}</b>
-                      <b>{normalizeContentType(candidate.content)}</b>
-                      <b>{candidate.metric}</b>
-                    </div>
-                  </button>
-                ))}
+                  </div>
+                )}
               </div>
             ) : (
               <p className="empty-copy">현재 개선 후보가 없습니다. 성과 기록이 쌓이면 다시 확인하세요.</p>
@@ -2670,8 +2751,8 @@ export function MainTab({
         </div>
       )}
       {isKeywordModalOpen && (
-        <div className="modal-backdrop reminder-modal-backdrop" role="dialog" aria-modal="true">
-          <article className="panel-card reminder-modal-card insight-modal-card">
+        <div className="modal-backdrop reminder-modal-backdrop" role="dialog" aria-modal="true" onClick={closeAllModals}>
+          <article className="panel-card reminder-modal-card insight-modal-card" onClick={(event) => event.stopPropagation()}>
             <div className="card-heading keyword-modal-hero">
               <div>
                 <h3>추천 키워드 근거</h3>

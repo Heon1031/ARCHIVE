@@ -5097,6 +5097,70 @@ textarea {
   gap: 10px;
 }
 
+.improve-modal-card {
+  width: min(980px, calc(100vw - 40px));
+}
+
+.improve-modal-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr);
+  gap: 16px;
+  min-height: 0;
+}
+
+.improve-modal-list {
+  max-height: min(52vh, 520px);
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(94, 92, 230, 0.26) rgba(255, 255, 255, 0.35);
+}
+
+.improve-modal-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.improve-modal-list::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.improve-modal-list::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  background: rgba(94, 92, 230, 0.26);
+}
+
+.improve-modal-detail {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  border: 1px solid var(--lg-hairline);
+  border-radius: 24px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.62);
+  min-width: 0;
+}
+
+.improve-modal-detail > h3 {
+  margin: 0;
+}
+
+.improve-modal-detail > p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted);
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.insight-list-button--active {
+  border-color: rgba(94, 92, 230, 0.45);
+  box-shadow: 0 16px 34px rgba(94, 92, 230, 0.14);
+}
+
 .insight-list-button,
 .related-content-list .date-content-card {
   width: 100%;
@@ -5112,6 +5176,16 @@ textarea {
     transform 180ms ease,
     box-shadow 180ms ease,
     border-color 180ms ease;
+}
+
+@media (max-width: 760px) {
+  .improve-modal-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .improve-modal-list {
+    max-height: 34vh;
+  }
 }
 
 .insight-list-button:hover,
